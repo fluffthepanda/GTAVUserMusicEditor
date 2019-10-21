@@ -1,8 +1,8 @@
 # GTA V User Music Editor
 
-IMPORTANT:
-In order to preserve your track data, please set the usertracks.db and usertracks.dbs files to "read-only." This prevents GTA V from overwriting them. You will have to clear the read-only attribute in order to use them with this application again.
-Alternatively, you can disable "Auto-scan for Music" in Settings > Audio (in-game).
+## IMPORTANT:
+In order to prevent GTA V from overwriting your track data, please set the usertracks.db and usertracks.dbs files to "read-only." You will have to clear the read-only attribute in order to use them with this application again.
+Alternatively, in-game you can disable "Auto-scan for Music" in Settings > Audio.
  
 Features:
 - Browsing for database files
@@ -18,4 +18,4 @@ Usage:
 - Make any changes to the track list, then write them to the database.
 
 Notes:
-- The "Remove Duplicates" feature will remove any entries with the same Artist and Title. This can be problematic if the first 31 characters of the title/artist of two entries match, since the database cuts the fields at 31 characters.
+- The "Remove Duplicates" feature will remove any entries with the same Artist and Title. This can be problematic if the first 31 characters of the title/artist of two entries match, since the database cuts the fields at 31 characters. Only one of those entries will be kept.
