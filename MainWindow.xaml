@@ -8,9 +8,10 @@
         Title="GTA V User Music Editor" Height="450" Width="800" MinHeight="450" MinWidth="800">
     <Window.Resources>
         <CollectionViewSource x:Key="ItemCollectionViewSource" CollectionViewType="ListCollectionView"/>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
     </Window.Resources>
     <Grid>
-        <DataGrid x:Name="trackList" Margin="0,0,0,84" HeadersVisibility="Column" Width="Auto" DataContext="{StaticResource ItemCollectionViewSource}" ItemsSource="{Binding}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserReorderColumns="False" Drop="trackList_Drop" AllowDrop="True" SelectionChanged="trackList_SelectionChanged" CanUserResizeRows="False" CanUserDeleteRows="False">
+        <DataGrid x:Name="trackList" Margin="0,0,0,84" HeadersVisibility="Column" Width="Auto" DataContext="{StaticResource ItemCollectionViewSource}" ItemsSource="{Binding}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserReorderColumns="False" Drop="trackList_Drop" AllowDrop="True" SelectionChanged="trackList_SelectionChanged" CanUserResizeRows="False" CanUserDeleteRows="False" AlternatingRowBackground="#FFEEEEEE">
             <DataGrid.Columns>
                 <DataGridTextColumn Binding="{Binding ID}" Header="ID" Width="50"/>
                 <DataGridTextColumn Binding="{Binding Title}" Header="Title" Width="*"/>
@@ -18,6 +19,7 @@
                 <DataGridTextColumn Binding="{Binding ShortPath}" Header="Path" Width="*"/>
             </DataGrid.Columns>
         </DataGrid>
+        <TextBlock x:Name="dragTracksMessage" Text="Drag audio files here" Width="280" Height="50" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Top" Foreground="#FF707070" TextAlignment="Center" Visibility="{Binding Items.IsEmpty, Converter={StaticResource ResourceKey=BooleanToVisibilityConverter}, ElementName=trackList}" Margin="0,150,0,0"/>
         <Grid Height="84" VerticalAlignment="Bottom">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="35"/>
@@ -32,8 +34,8 @@
                 <RowDefinition Height="28"/>
                 <RowDefinition Height="28"/>
             </Grid.RowDefinitions>
-            
-            
+
+
             <TextBlock Text="Title:" VerticalAlignment="Center"/>
             <TextBlock Text="Artist:" VerticalAlignment="Center" Grid.Row="1"/>
             <TextBlock Text="Path:" VerticalAlignment="Center" Grid.Row="2"/>

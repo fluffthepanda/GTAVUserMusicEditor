@@ -233,7 +233,7 @@ namespace GTAVUserMusicEditor
             bwdbs.Close();
             fs.Close();
             fsdbs.Close();
-            MessageBox.Show("Database files written.");
+            MessageBox.Show("Be sure to set the files to read-only prior to launching the game.\n\nAlternatively, disable the \"Auto-scan for Music\" setting in-game.","Database files written");
         }
 
         private byte[] strToPaddedChunk(string input, int length, byte padChar, Encoding enc)
@@ -412,11 +412,6 @@ namespace GTAVUserMusicEditor
                 }
             }
         }
-
-        //\G([A-Z]:.+?(?:\.MP3|\.M4A|\.AAC|\.WMA))
-
-
-
     }
 
     public class Track

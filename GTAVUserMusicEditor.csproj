@@ -3,10 +3,12 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>netcoreapp3.0</TargetFramework>
+    <PublishSingleFile>true</PublishSingleFile>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>note_icon-icons.com_60150.ico</ApplicationIcon>
     <StartupObject>GTAVUserMusicEditor.App</StartupObject>
-    <Version>0.97</Version>
+    <Version>0.98</Version>
     <Authors>Fluff the Panda</Authors>
   </PropertyGroup>
 

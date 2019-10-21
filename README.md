@@ -1,4 +1,8 @@
 # GTA V User Music Editor
+
+IMPORTANT:
+In order to preserve your track data, please set the usertracks.db and usertracks.dbs files to "read-only." This prevents GTA V from overwriting them. You will have to clear the read-only attribute in order to use them with this application again.
+Alternatively, you can disable "Auto-scan for Music" in Settings > Audio (in-game).
  
 Features:
 - Browsing for database files
