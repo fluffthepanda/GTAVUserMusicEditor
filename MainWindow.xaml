@@ -19,10 +19,10 @@
                 <DataGridTextColumn Binding="{Binding ShortPath}" Header="Path" Width="*"/>
             </DataGrid.Columns>
         </DataGrid>
-        <TextBlock x:Name="dragTracksMessage" Text="Drag audio files here" Width="280" Height="50" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Top" Foreground="#FF707070" TextAlignment="Center" Visibility="{Binding Items.IsEmpty, Converter={StaticResource ResourceKey=BooleanToVisibilityConverter}, ElementName=trackList}" Margin="0,150,0,0"/>
+        <TextBlock x:Name="dragTracksMessage" Text="Drag audio files here" Width="280" Height="50" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Top" Foreground="#FF707070" TextAlignment="Center" Visibility="{Binding Items.IsEmpty, Converter={StaticResource ResourceKey=BooleanToVisibilityConverter}, ElementName=trackList}" Margin="0,150,0,0" Drop="trackList_Drop" AllowDrop="True"/>
         <Grid Height="84" VerticalAlignment="Bottom">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="35"/>
+                <ColumnDefinition Width="40"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="100"/>
                 <ColumnDefinition Width="*"/>
@@ -36,9 +36,9 @@
             </Grid.RowDefinitions>
 
 
-            <TextBlock Text="Title:" VerticalAlignment="Center"/>
-            <TextBlock Text="Artist:" VerticalAlignment="Center" Grid.Row="1"/>
-            <TextBlock Text="Path:" VerticalAlignment="Center" Grid.Row="2"/>
+            <TextBlock Text="Title:" VerticalAlignment="Center" Padding="5,0,0,0"/>
+            <TextBlock Text="Artist:" VerticalAlignment="Center" Padding="5,0,0,0" Grid.Row="1"/>
+            <TextBlock Text="Path:" VerticalAlignment="Center" Padding="5,0,0,0" Grid.Row="2"/>
 
             <TextBox x:Name="TitleBox" Height="20" Grid.Column="1"/>
             <TextBox x:Name="ArtistBox" Height="20" Grid.Row="1" Grid.Column="1"/>

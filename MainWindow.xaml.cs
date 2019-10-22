@@ -82,22 +82,22 @@ namespace GTAVUserMusicEditor
 
             try
             {
-                fs = new FileStream(dbFile.Text, FileMode.Open);
+                fs = new FileStream(dbFile.Text, FileMode.Open, FileAccess.ReadWrite);
             }
-            catch(Exception)
+            catch(Exception ex)
             {
-                MessageBox.Show("Could not open \"" + dbFile.Text + "\". Check file permissions.");
+                MessageBox.Show("Could not open \"" + dbFile.Text + "\": " + "\n" + ex.InnerException.Message + " --> " + ex.Message);
                 return;
             }
 
             try
             {
-                fsdbs = new FileStream(dbsFile.Text, FileMode.Open);
+                fsdbs = new FileStream(dbsFile.Text, FileMode.Open, FileAccess.ReadWrite);
             }
-            catch(Exception)
+            catch(Exception ex)
             {
                 fs.Close();
-                MessageBox.Show("Could not open \"" + dbsFile.Text + "\". Check file permissions.");
+                MessageBox.Show("Could not open \"" + dbsFile.Text + "\": " + "\n" + ex.InnerException.Message + " --> " + ex.Message);
                 return;
             }
 
@@ -199,22 +199,22 @@ namespace GTAVUserMusicEditor
 
             try
             {
-                fs = new FileStream(dbFile.Text, FileMode.Create);
+                fs = new FileStream(dbFile.Text, FileMode.Create, FileAccess.ReadWrite);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                MessageBox.Show("Could not open \"" + dbFile.Text + "\". Check file permissions.");
+                MessageBox.Show("Could not open \"" + dbFile.Text + "\": " + "\n" + ex.InnerException.Message + " --> " + ex.Message + "\n\n" + ex.StackTrace);
                 return;
             }
 
             try
             {
-                fsdbs = new FileStream(dbsFile.Text, FileMode.Create);
+                fsdbs = new FileStream(dbsFile.Text, FileMode.Create, FileAccess.ReadWrite);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 fs.Close();
-                MessageBox.Show("Could not open \"" + dbsFile.Text + "\". Check file permissions.");
+                MessageBox.Show("Could not open \"" + dbsFile.Text + "\": " + "\n" + ex.InnerException.Message + " --> " + ex.Message + "\n\n" + ex.StackTrace);
                 return;
             }
 
@@ -336,6 +336,15 @@ namespace GTAVUserMusicEditor
                         title = "<unknown title>";
                         artist = "<unknown artist>";
                         showFailMessage = true;
+                    }
+
+                    if(title.Length > 31)
+                    {
+                        title = title.Substring(0, 31);
+                    }
+                    if(artist.Length > 31)
+                    {
+                        artist = artist.Substring(0, 31);
                     }
 
                     if (tracks.Count > 0)
