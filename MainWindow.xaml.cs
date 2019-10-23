@@ -77,27 +77,36 @@ namespace GTAVUserMusicEditor
                 MessageBox.Show("Please select a valid database file.");
                 return;
             }
+
+            if (File.GetAttributes(dbFile.Text).HasFlag(FileAttributes.ReadOnly) && MessageBox.Show("\"" + dbFile.Text + "\" is Read-only! File cannot be modified. Load anyway?", "Warning", MessageBoxButton.YesNoCancel) != MessageBoxResult.Yes)
+            {
+                return;
+            }
+            if (!File.GetAttributes(dbFile.Text).HasFlag(FileAttributes.ReadOnly) && File.GetAttributes(dbsFile.Text).HasFlag(FileAttributes.ReadOnly) && MessageBox.Show("\"" + dbsFile.Text + "\" is Read-only! File cannot be modified. Load anyway?", "Warning", MessageBoxButton.YesNoCancel) != MessageBoxResult.Yes)
+            {
+                return;
+            }
             FileStream fs;
             FileStream fsdbs;
 
             try
             {
-                fs = new FileStream(dbFile.Text, FileMode.Open, FileAccess.ReadWrite);
+                fs = new FileStream(dbFile.Text, FileMode.Open, FileAccess.Read);
             }
             catch(Exception ex)
             {
-                MessageBox.Show("Could not open \"" + dbFile.Text + "\": " + "\n" + ex.InnerException.Message + " --> " + ex.Message);
+                MessageBox.Show("Could not open \"" + dbFile.Text + "\": " + "\n" + ex.Message);
                 return;
             }
 
             try
             {
-                fsdbs = new FileStream(dbsFile.Text, FileMode.Open, FileAccess.ReadWrite);
+                fsdbs = new FileStream(dbsFile.Text, FileMode.Open, FileAccess.Read);
             }
             catch(Exception ex)
             {
                 fs.Close();
-                MessageBox.Show("Could not open \"" + dbsFile.Text + "\": " + "\n" + ex.InnerException.Message + " --> " + ex.Message);
+                MessageBox.Show("Could not open \"" + dbsFile.Text + "\": " + "\n" + ex.Message);
                 return;
             }
 
@@ -194,6 +203,17 @@ namespace GTAVUserMusicEditor
                 MessageBox.Show("Please select a valid database file.");
                 return;
             }
+            if (File.GetAttributes(dbFile.Text).HasFlag(FileAttributes.ReadOnly))
+            {
+                MessageBox.Show("\"" + dbFile.Text + "\" is Read-only.", "Write Failed");
+                return;
+            }
+            if (File.GetAttributes(dbsFile.Text).HasFlag(FileAttributes.ReadOnly))
+            {
+                MessageBox.Show("\"" + dbsFile.Text + "\" is Read-only.", "Write Failed");
+                return;
+            }
+
             FileStream fs;
             FileStream fsdbs;
 
@@ -203,7 +223,7 @@ namespace GTAVUserMusicEditor
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Could not open \"" + dbFile.Text + "\": " + "\n" + ex.InnerException.Message + " --> " + ex.Message + "\n\n" + ex.StackTrace);
+                MessageBox.Show("Could not write to \"" + dbFile.Text + "\": " + "\n" + ex.Message);
                 return;
             }
 
@@ -214,7 +234,7 @@ namespace GTAVUserMusicEditor
             catch (Exception ex)
             {
                 fs.Close();
-                MessageBox.Show("Could not open \"" + dbsFile.Text + "\": " + "\n" + ex.InnerException.Message + " --> " + ex.Message + "\n\n" + ex.StackTrace);
+                MessageBox.Show("Could not write to \"" + dbsFile.Text + "\": " + "\n" + ex.Message);
                 return;
             }
 
