@@ -214,6 +214,21 @@ namespace GTAVUserMusicEditor
                 return;
             }
 
+            bool setDbHidden = false;
+            bool setDbsHidden = false;
+
+            if(File.GetAttributes(dbFile.Text).HasFlag(FileAttributes.Hidden))
+            {
+                setDbHidden = true;
+                File.SetAttributes(dbFile.Text, File.GetAttributes(dbsFile.Text) & ~FileAttributes.Hidden);
+            }
+
+            if (File.GetAttributes(dbsFile.Text).HasFlag(FileAttributes.Hidden))
+            {
+                setDbsHidden = true;
+                File.SetAttributes(dbsFile.Text, File.GetAttributes(dbsFile.Text) & ~FileAttributes.Hidden);
+            }
+
             FileStream fs;
             FileStream fsdbs;
 
@@ -253,6 +268,15 @@ namespace GTAVUserMusicEditor
             bwdbs.Close();
             fs.Close();
             fsdbs.Close();
+
+            if(setDbHidden)
+            {
+                File.SetAttributes(dbFile.Text, File.GetAttributes(dbFile.Text) | FileAttributes.Hidden);
+            }
+            if (setDbsHidden)
+            {
+                File.SetAttributes(dbsFile.Text, File.GetAttributes(dbsFile.Text) | FileAttributes.Hidden);
+            }
             MessageBox.Show("Be sure to set the files to read-only prior to launching the game.\n\nAlternatively, disable the \"Auto-scan for Music\" setting in-game.","Database files written");
         }
 
