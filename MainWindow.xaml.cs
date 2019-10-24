@@ -279,32 +279,36 @@ namespace GTAVUserMusicEditor
                 byte[] chunkArtist = StrToPaddedChunk(t.Artist, 31, 0x00, Encoding.Default);
                 byte[] chunk = chunkStart.Concat(chunkArtist).Concat(chunkSeparator).Concat(chunkTitle).Concat(chunkEnd).ToArray();
                 bw.Write(chunk);
+                string final_path = t.Path;
                 if (ConfigurationManager.AppSettings.Get("path") == "short")
                 {
-                    bwdbs.Write(Encoding.Unicode.GetBytes(GetShortPath(t.Path)));
+                    final_path = GetShortPath(t.Path);
+                }
+                else if (ConfigurationManager.AppSettings.Get("path") == "long")
+                {
+                    final_path = t.Path;
+                }
+                else if (ConfigurationManager.AppSettings.Get("path") == "hybrid")
+                {
+                    final_path = GetShortPath(t.Path);
+                    final_path = final_path.Substring(0, final_path.LastIndexOf(@"\"));
+                    final_path += t.Path.Substring(t.Path.LastIndexOf(@"\"));
+                }
+                if (bool.Parse(ConfigurationManager.AppSettings.Get("doubleSlash")))
+                {
+                    if (!final_path.Contains(@"\\"))
+                    {
+                        final_path = final_path.Insert(final_path.LastIndexOf(@"\"), @"\");
+                    }
                 }
                 else
                 {
-                    if (bool.Parse(ConfigurationManager.AppSettings.Get("doubleSlash")))
+                    if (final_path.Contains(@"\\"))
                     {
-                        if(!t.Path.Contains(@"\\"))
-                        {
-                            t.Path.Insert(t.Path.LastIndexOf(@"\"), @"\");
-                        }
-                        bwdbs.Write(Encoding.Unicode.GetBytes(t.Path));
-                    }
-                    else
-                    {
-                        if (t.Path.Contains(@"\\"))
-                        {
-                            bwdbs.Write(Encoding.Unicode.GetBytes(t.Path.Replace(@"\\", @"\")));
-                        }
-                        else
-                        {
-                            bwdbs.Write(Encoding.Unicode.GetBytes(t.Path));
-                        }
+                        final_path = final_path.Replace(@"\\", @"\");
                     }
                 }
+                bwdbs.Write(Encoding.Unicode.GetBytes(final_path));
             }
 
             bw.Close();
@@ -569,26 +573,35 @@ namespace GTAVUserMusicEditor
             string raw = sr.ReadToEnd();
             MatchCollection matches = Regex.Matches(raw, "\\G([A-Z]:.+?(?:\\.MP3|\\.M4A|\\.AAC|\\.WMA))", RegexOptions.IgnoreCase);
             Match m = matches[0];
-            if(GetShortPath(m.Value) == m.Value)
+            string full = System.IO.Path.GetFullPath(m.Value);
+            if (GetShortPath(m.Value) == m.Value)
             {
                 AddUpdateAppSettings("path", "short");
-                AddUpdateAppSettings("doubleSlash", "false");
+            }
+            else if (m.Value.Contains("~") && m.Value.Substring(m.Value.LastIndexOf(@"\")) == full.Substring(full.LastIndexOf(@"\")))
+            {
+                AddUpdateAppSettings("path", "hybrid");
             }
             else
             {
                 AddUpdateAppSettings("path", "long");
-                if(m.Value.Contains(@"\\"))
-                {
-                    AddUpdateAppSettings("doubleSlash", "true");
-                }
-                else
-                {
-                    AddUpdateAppSettings("doubleSlash", "false");
-                }
             }
 
+            if (m.Value.Contains(@"\\"))
+            {
+                AddUpdateAppSettings("doubleSlash", "true");
+            }
+            else
+            {
+                AddUpdateAppSettings("doubleSlash", "false");
+            }
 
-            MessageBox.Show("Key saved!", "Success");
+            br.Close();
+            sr.Close();
+            fs.Close();
+            fsdbs.Close();
+            MessageBox.Show("Detected settings:                                  " +
+                "\n\nPath type: " + ConfigurationManager.AppSettings.Get("path") + "\nDouble slash: " + (bool.Parse(ConfigurationManager.AppSettings.Get("doubleSlash")) ? "Yes" : "No"), "Key Saved!");
         }
 
         static void AddUpdateAppSettings(string key, string value)
