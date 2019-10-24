@@ -16,7 +16,8 @@
                 <DataGridTextColumn Binding="{Binding ID}" Header="ID" Width="50"/>
                 <DataGridTextColumn Binding="{Binding Title}" Header="Title" Width="*"/>
                 <DataGridTextColumn Binding="{Binding Artist}" Header="Artist" Width="*"/>
-                <DataGridTextColumn Binding="{Binding ShortPath}" Header="Path" Width="*"/>
+                <DataGridTextColumn Binding="{Binding ShortPath}" Header="Short Path" Width="*"/>
+                <DataGridTextColumn Binding="{Binding Path}" Header="Path" Width="*"/>
             </DataGrid.Columns>
         </DataGrid>
         <TextBlock x:Name="dragTracksMessage" Text="Drag audio files here" Width="280" Height="50" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Top" Foreground="#FF707070" TextAlignment="Center" Visibility="{Binding Items.IsEmpty, Converter={StaticResource ResourceKey=BooleanToVisibilityConverter}, ElementName=trackList}" Margin="0,150,0,0" Drop="TrackList_Drop" AllowDrop="True"/>

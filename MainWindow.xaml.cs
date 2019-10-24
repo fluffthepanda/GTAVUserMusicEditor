@@ -170,7 +170,16 @@ namespace GTAVUserMusicEditor
             {
                 try
                 {
-                    tracks.Find(x => x.ID == i).ShortPath = m.Value;
+                    if (m.Value == GetShortPath(m.Value))
+                    {
+                        tracks.Find(x => x.ID == i).Path = System.IO.Path.GetFullPath(m.Value.Replace(@"\\", @"\"));
+                        tracks.Find(x => x.ID == i).ShortPath = m.Value.Replace(@"\\", @"\");
+                    }
+                    else
+                    {
+                        tracks.Find(x => x.ID == i).Path = m.Value.Replace(@"\\", @"\");
+                        tracks.Find(x => x.ID == i).ShortPath = GetShortPath(m.Value.Replace(@"\\", @"\"));
+                    }
                 }
                 catch (Exception)
                 {
@@ -196,7 +205,7 @@ namespace GTAVUserMusicEditor
                 return;
             }
 
-            if(ConfigurationManager.AppSettings.Get("key") == null)
+            if(ConfigurationManager.AppSettings.Get("key") == null || ConfigurationManager.AppSettings.Get("path") == null || ConfigurationManager.AppSettings.Get("doubleSlash") == null)
             {
                 MessageBox.Show("Cannot write files until a key is saved.");
                 return;
@@ -270,7 +279,32 @@ namespace GTAVUserMusicEditor
                 byte[] chunkArtist = StrToPaddedChunk(t.Artist, 31, 0x00, Encoding.Default);
                 byte[] chunk = chunkStart.Concat(chunkArtist).Concat(chunkSeparator).Concat(chunkTitle).Concat(chunkEnd).ToArray();
                 bw.Write(chunk);
-                bwdbs.Write(Encoding.Unicode.GetBytes(t.ShortPath));
+                if (ConfigurationManager.AppSettings.Get("path") == "short")
+                {
+                    bwdbs.Write(Encoding.Unicode.GetBytes(GetShortPath(t.Path)));
+                }
+                else
+                {
+                    if (bool.Parse(ConfigurationManager.AppSettings.Get("doubleSlash")))
+                    {
+                        if(!t.Path.Contains(@"\\"))
+                        {
+                            t.Path.Insert(t.Path.LastIndexOf(@"\"), @"\");
+                        }
+                        bwdbs.Write(Encoding.Unicode.GetBytes(t.Path));
+                    }
+                    else
+                    {
+                        if (t.Path.Contains(@"\\"))
+                        {
+                            bwdbs.Write(Encoding.Unicode.GetBytes(t.Path.Replace(@"\\", @"\")));
+                        }
+                        else
+                        {
+                            bwdbs.Write(Encoding.Unicode.GetBytes(t.Path));
+                        }
+                    }
+                }
             }
 
             bw.Close();
@@ -402,11 +436,11 @@ namespace GTAVUserMusicEditor
 
                     if (tracks.Count > 0)
                     {
-                        tracks.Add(new Track() { ID = tracks.Max(x => x.ID) + 1, Title = title, Artist = artist, ShortPath = shortPath });
+                        tracks.Add(new Track() { ID = tracks.Max(x => x.ID) + 1, Title = title, Artist = artist, ShortPath = shortPath, Path = f });
                     }
                     else
                     {
-                        tracks.Add(new Track() { ID = 0, Title = title, Artist = artist, ShortPath = shortPath });
+                        tracks.Add(new Track() { ID = 0, Title = title, Artist = artist, ShortPath = shortPath, Path = f });
                     }
                 }
 
@@ -477,7 +511,7 @@ namespace GTAVUserMusicEditor
 
         private void SaveKeyButton_Click(object sender, RoutedEventArgs e)
         {
-            if(ConfigurationManager.AppSettings["key"] != null && MessageBox.Show("You already have a key saved. Overwrite the key?", "Overwrite Key", MessageBoxButton.YesNoCancel) != MessageBoxResult.Yes)
+            if(ConfigurationManager.AppSettings.Get("key") != null && ConfigurationManager.AppSettings.Get("path") != null && ConfigurationManager.AppSettings.Get("doubleSlash") != null && MessageBox.Show("You already have a key saved. Overwrite the key?", "Overwrite Key", MessageBoxButton.YesNoCancel) != MessageBoxResult.Yes)
             {
                 return;
             }
@@ -486,8 +520,14 @@ namespace GTAVUserMusicEditor
                 MessageBox.Show("Please select a valid database file.");
                 return;
             }
+            if (!File.Exists(dbsFile.Text))
+            {
+                MessageBox.Show("Please select a valid database file.");
+                return;
+            }
 
             FileStream fs;
+            FileStream fsdbs;
 
             try
             {
@@ -499,7 +539,17 @@ namespace GTAVUserMusicEditor
                 return;
             }
 
-            if(fs.Length % 96 != 0)
+            try
+            {
+                fsdbs = new FileStream(dbsFile.Text, FileMode.Open, FileAccess.Read);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Could not open \"" + dbsFile.Text + "\": " + "\n" + ex.Message);
+                return;
+            }
+
+            if (fs.Length % 96 != 0)
             {
                 MessageBox.Show("The usertracks.db file is corrupt!","Cannot Read Key");
             }
@@ -514,6 +564,29 @@ namespace GTAVUserMusicEditor
             byte[] key = chunkStart.Concat(chunkSeparator).Concat(chunkEnd).ToArray();
 
             AddUpdateAppSettings("key", BitConverter.ToString(key).Replace("-", ""));
+
+            StreamReader sr = new StreamReader(fsdbs, Encoding.Unicode);
+            string raw = sr.ReadToEnd();
+            MatchCollection matches = Regex.Matches(raw, "\\G([A-Z]:.+?(?:\\.MP3|\\.M4A|\\.AAC|\\.WMA))", RegexOptions.IgnoreCase);
+            Match m = matches[0];
+            if(GetShortPath(m.Value) == m.Value)
+            {
+                AddUpdateAppSettings("path", "short");
+                AddUpdateAppSettings("doubleSlash", "false");
+            }
+            else
+            {
+                AddUpdateAppSettings("path", "long");
+                if(m.Value.Contains(@"\\"))
+                {
+                    AddUpdateAppSettings("doubleSlash", "true");
+                }
+                else
+                {
+                    AddUpdateAppSettings("doubleSlash", "false");
+                }
+            }
+
 
             MessageBox.Show("Key saved!", "Success");
         }
@@ -545,8 +618,7 @@ namespace GTAVUserMusicEditor
         {
             var appSettings = ConfigurationManager.AppSettings;
 
-            string key = appSettings.Get("key");
-            if (key == null)
+            if (appSettings.Get("key") == null || appSettings.Get("path") == null || appSettings.Get("doubleSlash") == null)
             {
                 MessageBox.Show("No key data found. Please generate a playlist with GTA V, then click Save Key.", "No Key Data");
             }
@@ -568,6 +640,7 @@ namespace GTAVUserMusicEditor
         private string title;
         private string artist;
         private string shortPath;
+        private string path;
 
         public int ID
         {
@@ -591,6 +664,12 @@ namespace GTAVUserMusicEditor
         {
             get { return shortPath; }
             set { shortPath = value; }
+        }
+
+        public string Path
+        {
+            get { return path; }
+            set { path = value; }
         }
     }
 }
