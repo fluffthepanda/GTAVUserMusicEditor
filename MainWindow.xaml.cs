@@ -1,6 +1,7 @@
 ﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -25,10 +26,6 @@ namespace GTAVUserMusicEditor
     public partial class MainWindow : Window
     {
         List<Track> tracks = new List<Track>();
-        private readonly byte[] dbChunkBegin = { 0xC0, 0x5D, 0x30, 0x60,     0x4B, 0x01, 0x00, 0x00};
-        private readonly byte[] dbChunkSeparator = { 0x00 };
-        private readonly byte[] dbChunkEnd = { 0x00,     0xA7, 0x32, 0x02, 0x00,     0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00,     0x00, 0x00, 0x00, 0x00,     0x02, 0x00, 0x00, 0x00,     0x1C, 0x00, 0x00, 0x00};
 
         public MainWindow()
         {
@@ -38,7 +35,7 @@ namespace GTAVUserMusicEditor
             itemCollectionViewSource = (CollectionViewSource)(FindResource("ItemCollectionViewSource"));
             itemCollectionViewSource.Source = tracks;
 
-            if(File.Exists(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Rockstar Games\\GTA V\\User Music\\usertracks.db"))
+            if (File.Exists(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Rockstar Games\\GTA V\\User Music\\usertracks.db"))
             {
                 dbFile.Text = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Rockstar Games\\GTA V\\User Music\\usertracks.db";
             }
@@ -48,18 +45,18 @@ namespace GTAVUserMusicEditor
             }
         }
 
-        private void dbBrowse_Click(object sender, RoutedEventArgs e)
+        private void DbBrowse_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog fd = new OpenFileDialog();
             fd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Rockstar Games\\GTA V\\User Music";
             fd.Filter = "GTA V Music Database|*.db";
-            if(fd.ShowDialog() ?? true)
+            if (fd.ShowDialog() ?? true)
             {
                 dbFile.Text = fd.FileName;
             }
         }
 
-        private void dbsBrowse_Click(object sender, RoutedEventArgs e)
+        private void DbsBrowse_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog fd = new OpenFileDialog();
             fd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Rockstar Games\\GTA V\\User Music";
@@ -72,7 +69,7 @@ namespace GTAVUserMusicEditor
 
         private void LoadButton_Click(object sender, RoutedEventArgs e)
         {
-            if(!File.Exists(dbFile.Text))
+            if (!File.Exists(dbFile.Text))
             {
                 MessageBox.Show("Please select a valid database file.");
                 return;
@@ -93,7 +90,7 @@ namespace GTAVUserMusicEditor
             {
                 fs = new FileStream(dbFile.Text, FileMode.Open, FileAccess.Read);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 MessageBox.Show("Could not open \"" + dbFile.Text + "\": " + "\n" + ex.Message);
                 return;
@@ -103,7 +100,7 @@ namespace GTAVUserMusicEditor
             {
                 fsdbs = new FileStream(dbsFile.Text, FileMode.Open, FileAccess.Read);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 fs.Close();
                 MessageBox.Show("Could not open \"" + dbsFile.Text + "\": " + "\n" + ex.Message);
@@ -121,7 +118,7 @@ namespace GTAVUserMusicEditor
 
             if (fs.Length % 96 != 0)
             {
-                if(MessageBox.Show("\"" + dbsFile.Text + "\" seems to be corrupt (incorrect length). Try to parse anyway?", "Incorrect Length", MessageBoxButton.YesNoCancel) != MessageBoxResult.Yes)
+                if (MessageBox.Show("\"" + dbsFile.Text + "\" seems to be corrupt (incorrect length). Try to parse anyway?", "Incorrect Length", MessageBoxButton.YesNoCancel) != MessageBoxResult.Yes)
                 {
                     fs.Close();
                     fsdbs.Close();
@@ -129,33 +126,33 @@ namespace GTAVUserMusicEditor
                 }
             }
 
-            BinaryReader bw = new BinaryReader(fs);
+            BinaryReader br = new BinaryReader(fs);
             int counter = 0;
             while (fs.CanRead && fs.Position < fs.Length)
             {
-                if(fs.Length - fs.Position < 96)
+                if (fs.Length - fs.Position < 96)
                 {
                     break;
                 }
-                byte[] chunkBegin = bw.ReadBytes(8);
-                byte[] chunkArtist = bw.ReadBytes(31);
-                byte chunkSeparator = bw.ReadByte();
-                byte[] chunkTitle = bw.ReadBytes(31);
-                byte[] chunkEnd = bw.ReadBytes(25);
+                byte[] chunkBegin = br.ReadBytes(8);
+                byte[] chunkArtist = br.ReadBytes(31);
+                byte chunkSeparator = br.ReadByte();
+                byte[] chunkTitle = br.ReadBytes(31);
+                byte[] chunkEnd = br.ReadBytes(25);
 
                 string artist = "";
                 string title = "";
-                foreach(byte b in chunkArtist)
+                foreach (byte b in chunkArtist)
                 {
-                    if(b == 0x00)
+                    if (b == 0x00)
                     {
                         break;
                     }
                     artist += (char)b;
                 }
-                foreach(byte b in chunkTitle)
+                foreach (byte b in chunkTitle)
                 {
-                    if(b == 0x00)
+                    if (b == 0x00)
                     {
                         break;
                     }
@@ -169,13 +166,13 @@ namespace GTAVUserMusicEditor
             string raw = sr.ReadToEnd();
             MatchCollection matches = Regex.Matches(raw, "\\G([A-Z]:.+?(?:\\.MP3|\\.M4A|\\.AAC|\\.WMA))", RegexOptions.IgnoreCase);
             int i = 0;
-            foreach(Match m in matches)
+            foreach (Match m in matches)
             {
                 try
                 {
                     tracks.Find(x => x.ID == i).ShortPath = m.Value;
                 }
-                catch(Exception)
+                catch (Exception)
                 {
                     MessageBox.Show("Could not find ID: " + i);
                     break;
@@ -183,7 +180,7 @@ namespace GTAVUserMusicEditor
                 i++;
             }
 
-            bw.Close();
+            br.Close();
             sr.Close();
             fs.Close();
             fsdbs.Close();
@@ -192,12 +189,24 @@ namespace GTAVUserMusicEditor
             trackList.Items.Refresh();
         }
 
-        private void writeFiles_Click(object sender, RoutedEventArgs e)
+        private void WriteFiles_Click(object sender, RoutedEventArgs e)
         {
             if (MessageBox.Show("Are you sure you want to overwrite the database?", "Confirm Overwrite", MessageBoxButton.YesNoCancel) != MessageBoxResult.Yes)
             {
                 return;
             }
+
+            if(ConfigurationManager.AppSettings.Get("key") == null)
+            {
+                MessageBox.Show("Cannot write files until a key is saved.");
+                return;
+            }
+
+            byte[] key = StringToByteArray(ConfigurationManager.AppSettings.Get("key"));
+            byte[] chunkStart = key.AsSpan(0, 8).ToArray();
+            byte[] chunkSeparator = key.AsSpan(8, 1).ToArray();
+            byte[] chunkEnd = key.AsSpan(9, 25).ToArray();
+
             if (!File.Exists(dbFile.Text))
             {
                 MessageBox.Show("Please select a valid database file.");
@@ -217,7 +226,7 @@ namespace GTAVUserMusicEditor
             bool setDbHidden = false;
             bool setDbsHidden = false;
 
-            if(File.GetAttributes(dbFile.Text).HasFlag(FileAttributes.Hidden))
+            if (File.GetAttributes(dbFile.Text).HasFlag(FileAttributes.Hidden))
             {
                 setDbHidden = true;
                 File.SetAttributes(dbFile.Text, File.GetAttributes(dbsFile.Text) & ~FileAttributes.Hidden);
@@ -257,9 +266,9 @@ namespace GTAVUserMusicEditor
             BinaryWriter bwdbs = new BinaryWriter(fsdbs);
             foreach (Track t in tracks)
             {
-                byte[] chunkTitle = strToPaddedChunk(t.Title, 31, 0x00, Encoding.Default);
-                byte[] chunkArtist = strToPaddedChunk(t.Artist, 31, 0x00, Encoding.Default);
-                byte[] chunk = dbChunkBegin.Concat(chunkArtist).Concat(dbChunkSeparator).Concat(chunkTitle).Concat(dbChunkEnd).ToArray();
+                byte[] chunkTitle = StrToPaddedChunk(t.Title, 31, 0x00, Encoding.Default);
+                byte[] chunkArtist = StrToPaddedChunk(t.Artist, 31, 0x00, Encoding.Default);
+                byte[] chunk = chunkStart.Concat(chunkArtist).Concat(chunkSeparator).Concat(chunkTitle).Concat(chunkEnd).ToArray();
                 bw.Write(chunk);
                 bwdbs.Write(Encoding.Unicode.GetBytes(t.ShortPath));
             }
@@ -269,7 +278,7 @@ namespace GTAVUserMusicEditor
             fs.Close();
             fsdbs.Close();
 
-            if(setDbHidden)
+            if (setDbHidden)
             {
                 File.SetAttributes(dbFile.Text, File.GetAttributes(dbFile.Text) | FileAttributes.Hidden);
             }
@@ -277,13 +286,13 @@ namespace GTAVUserMusicEditor
             {
                 File.SetAttributes(dbsFile.Text, File.GetAttributes(dbsFile.Text) | FileAttributes.Hidden);
             }
-            MessageBox.Show("Be sure to set the files to read-only prior to launching the game.\n\nAlternatively, disable the \"Auto-scan for Music\" setting in-game.","Database files written");
+            MessageBox.Show("Be sure to set the files to read-only prior to launching the game.\n\nAlternatively, disable the \"Auto-scan for Music\" setting in-game.", "Database files written");
         }
 
-        private byte[] strToPaddedChunk(string input, int length, byte padChar, Encoding enc)
+        private byte[] StrToPaddedChunk(string input, int length, byte padChar, Encoding enc)
         {
             byte[] chunk = new byte[length];
-            if(input.Length >= length)
+            if (input.Length >= length)
             {
                 input = input.Substring(0, length);
             }
@@ -304,11 +313,11 @@ namespace GTAVUserMusicEditor
 
         private void DeleteAllButton_Click(object sender, RoutedEventArgs e)
         {
-            if(tracks.Count < 1)
+            if (tracks.Count < 1)
             {
                 return;
             }
-            if(MessageBox.Show("Are you sure you want to clear the track list?", "Confirm Clear", MessageBoxButton.YesNoCancel) != MessageBoxResult.Yes)
+            if (MessageBox.Show("Are you sure you want to clear the track list?", "Confirm Clear", MessageBoxButton.YesNoCancel) != MessageBoxResult.Yes)
             {
                 return;
             }
@@ -332,7 +341,7 @@ namespace GTAVUserMusicEditor
             return shortPath.ToString();
         }
 
-        private void trackList_Drop(object sender, DragEventArgs e)
+        private void TrackList_Drop(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
@@ -340,17 +349,17 @@ namespace GTAVUserMusicEditor
 
                 bool showFailMessage = false;
                 bool showInvalidExtension = false;
-                foreach(string f in files)
+                foreach (string f in files)
                 {
 
-                    if(f.LastIndexOf('.') >= 0)
+                    if (f.LastIndexOf('.') >= 0)
                     {
                         string ext;
                         try
                         {
                             ext = f.Substring(f.LastIndexOf('.'), 4).ToLower();
                         }
-                        catch(Exception)
+                        catch (Exception)
                         {
                             showInvalidExtension = true;
                             continue;
@@ -375,18 +384,18 @@ namespace GTAVUserMusicEditor
                         title = t.Tag.Title;
                         artist = t.Tag.FirstPerformer;
                     }
-                    catch(Exception)
+                    catch (Exception)
                     {
                         title = "<unknown title>";
                         artist = "<unknown artist>";
                         showFailMessage = true;
                     }
 
-                    if(title.Length > 31)
+                    if (title.Length > 31)
                     {
                         title = title.Substring(0, 31);
                     }
-                    if(artist.Length > 31)
+                    if (artist.Length > 31)
                     {
                         artist = artist.Substring(0, 31);
                     }
@@ -401,11 +410,11 @@ namespace GTAVUserMusicEditor
                     }
                 }
 
-                if(showFailMessage)
+                if (showFailMessage)
                 {
                     MessageBox.Show("Failed to parse tags in one or more files");
                 }
-                if(showInvalidExtension)
+                if (showInvalidExtension)
                 {
                     MessageBox.Show("One or more files were skipped due to an invalid extension.");
                 }
@@ -415,9 +424,9 @@ namespace GTAVUserMusicEditor
             }
         }
 
-        private void trackList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void TrackList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if(trackList.SelectedItem != null && trackList.SelectedItem.GetType() == typeof(Track))
+            if (trackList.SelectedItem != null && trackList.SelectedItem.GetType() == typeof(Track))
             {
                 TitleBox.Text = ((Track)trackList.SelectedItem).Title;
                 ArtistBox.Text = ((Track)trackList.SelectedItem).Artist;
@@ -442,7 +451,7 @@ namespace GTAVUserMusicEditor
         {
             if (trackList.SelectedItems != null && trackList.SelectedItems.Count > 0 && trackList.SelectedItem.GetType() == typeof(Track))
             {
-                foreach(Track t in trackList.SelectedItems)
+                foreach (Track t in trackList.SelectedItems)
                 {
                     tracks.Remove(t);
                 }
@@ -451,12 +460,12 @@ namespace GTAVUserMusicEditor
             }
         }
 
-        private void dedupeButton_Click(object sender, RoutedEventArgs e)
+        private void DedupeButton_Click(object sender, RoutedEventArgs e)
         {
-            if(tracks.Count > 0)
+            if (tracks.Count > 0)
             {
                 List<Track> noDupes = new List<Track>(tracks.GroupBy(x => new { x.Artist, x.Title }).Select(x => x.First()).ToList());
-                if(tracks.Count != noDupes.Count)
+                if (tracks.Count != noDupes.Count)
                 {
                     tracks.Clear();
                     tracks.AddRange(noDupes);
@@ -464,6 +473,92 @@ namespace GTAVUserMusicEditor
                     trackList.Items.Refresh();
                 }
             }
+        }
+
+        private void SaveKeyButton_Click(object sender, RoutedEventArgs e)
+        {
+            if(ConfigurationManager.AppSettings["key"] != null && MessageBox.Show("You already have a key saved. Overwrite the key?", "Overwrite Key", MessageBoxButton.YesNoCancel) != MessageBoxResult.Yes)
+            {
+                return;
+            }
+            if (!File.Exists(dbFile.Text))
+            {
+                MessageBox.Show("Please select a valid database file.");
+                return;
+            }
+
+            FileStream fs;
+
+            try
+            {
+                fs = new FileStream(dbFile.Text, FileMode.Open, FileAccess.Read);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Could not open \"" + dbFile.Text + "\": " + "\n" + ex.Message);
+                return;
+            }
+
+            if(fs.Length % 96 != 0)
+            {
+                MessageBox.Show("The usertracks.db file is corrupt!","Cannot Read Key");
+            }
+
+            BinaryReader br = new BinaryReader(fs);
+            byte[] chunkStart = br.ReadBytes(8);
+            br.BaseStream.Position = 39;
+            byte[] chunkSeparator = { br.ReadByte() };
+            br.BaseStream.Position = 71;
+            byte[] chunkEnd = br.ReadBytes(25);
+
+            byte[] key = chunkStart.Concat(chunkSeparator).Concat(chunkEnd).ToArray();
+
+            AddUpdateAppSettings("key", BitConverter.ToString(key).Replace("-", ""));
+
+            MessageBox.Show("Key saved!", "Success");
+        }
+
+        static void AddUpdateAppSettings(string key, string value)
+        {
+            try
+            {
+                var configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+                var settings = configFile.AppSettings.Settings;
+                if (settings[key] == null)
+                {
+                    settings.Add(key, value);
+                }
+                else
+                {
+                    settings[key].Value = value;
+                }
+                configFile.Save(ConfigurationSaveMode.Modified);
+                ConfigurationManager.RefreshSection(configFile.AppSettings.SectionInformation.Name);
+            }
+            catch (ConfigurationErrorsException)
+            {
+                MessageBox.Show("Error writing app settings");
+            }
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            var appSettings = ConfigurationManager.AppSettings;
+
+            string key = appSettings.Get("key");
+            if (key == null)
+            {
+                MessageBox.Show("No key data found. Please generate a playlist with GTA V, then click Save Key.", "No Key Data");
+            }
+        }
+
+        public static byte[] StringToByteArray(String hex)
+        {
+            int NumberChars = hex.Length;
+            byte[] bytes = new byte[NumberChars / 2];
+            for (int i = 0; i < NumberChars; i += 2)
+                bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
+            return bytes;
         }
     }
 

@@ -5,13 +5,13 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GTAVUserMusicEditor"
         mc:Ignorable="d"
-        Title="GTA V User Music Editor" Height="450" Width="800" MinHeight="450" MinWidth="800">
+        Title="GTA V User Music Editor" Height="450" Width="800" MinHeight="450" MinWidth="800" Loaded="Window_Loaded">
     <Window.Resources>
         <CollectionViewSource x:Key="ItemCollectionViewSource" CollectionViewType="ListCollectionView"/>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
     </Window.Resources>
     <Grid>
-        <DataGrid x:Name="trackList" Margin="0,0,0,84" HeadersVisibility="Column" Width="Auto" DataContext="{StaticResource ItemCollectionViewSource}" ItemsSource="{Binding}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserReorderColumns="False" Drop="trackList_Drop" AllowDrop="True" SelectionChanged="trackList_SelectionChanged" CanUserResizeRows="False" CanUserDeleteRows="False" AlternatingRowBackground="#FFEEEEEE">
+        <DataGrid x:Name="trackList" Margin="0,0,0,84" HeadersVisibility="Column" Width="Auto" DataContext="{StaticResource ItemCollectionViewSource}" ItemsSource="{Binding}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserReorderColumns="False" Drop="TrackList_Drop" AllowDrop="True" SelectionChanged="TrackList_SelectionChanged" CanUserResizeRows="False" CanUserDeleteRows="False" AlternatingRowBackground="#FFEEEEEE">
             <DataGrid.Columns>
                 <DataGridTextColumn Binding="{Binding ID}" Header="ID" Width="50"/>
                 <DataGridTextColumn Binding="{Binding Title}" Header="Title" Width="*"/>
@@ -19,7 +19,7 @@
                 <DataGridTextColumn Binding="{Binding ShortPath}" Header="Path" Width="*"/>
             </DataGrid.Columns>
         </DataGrid>
-        <TextBlock x:Name="dragTracksMessage" Text="Drag audio files here" Width="280" Height="50" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Top" Foreground="#FF707070" TextAlignment="Center" Visibility="{Binding Items.IsEmpty, Converter={StaticResource ResourceKey=BooleanToVisibilityConverter}, ElementName=trackList}" Margin="0,150,0,0" Drop="trackList_Drop" AllowDrop="True"/>
+        <TextBlock x:Name="dragTracksMessage" Text="Drag audio files here" Width="280" Height="50" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Top" Foreground="#FF707070" TextAlignment="Center" Visibility="{Binding Items.IsEmpty, Converter={StaticResource ResourceKey=BooleanToVisibilityConverter}, ElementName=trackList}" Margin="0,150,0,0" Drop="TrackList_Drop" AllowDrop="True"/>
         <Grid Height="84" VerticalAlignment="Bottom">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="40"/>
@@ -50,13 +50,14 @@
 
             <TextBox x:Name="dbFile" Height="20" Grid.Column="3" Grid.ColumnSpan="2" Text="No file selected."/>
             <TextBox x:Name="dbsFile" Height="20" Grid.Row="1" Grid.Column="3" Grid.ColumnSpan="2" Text="No file selected."/>
-            <Button x:Name="dedupeButton" Content="Remove Duplicates" Width="120" Height="20" Grid.Row="2" Grid.Column="3" HorizontalAlignment="Left" Click="dedupeButton_Click"/>
+            <Button x:Name="dedupeButton" Content="Remove Duplicates" Width="120" Height="20" Grid.Row="2" Grid.Column="3" HorizontalAlignment="Left" Click="DedupeButton_Click"/>
 
+            <Button x:Name="SaveKeyButton" Width="80" Height="20" Content="Save Key" Grid.Row="2" Grid.Column="4" HorizontalAlignment="Left" Click="SaveKeyButton_Click"/>
             <Button x:Name="LoadButton" Width="80" Height="20" Content="Load Tracks" Grid.Row="2" Grid.Column="4" HorizontalAlignment="Right" Click="LoadButton_Click"/>
 
-            <Button x:Name="dbBrowse" Width="80" Height="20" Content="Browse..." Grid.Column="5" Click="dbBrowse_Click"/>
-            <Button x:Name="dbsBrowse" Width="80" Height="20" Content="Browse..." Grid.Row="1" Grid.Column="5" Click="dbsBrowse_Click"/>
-            <Button x:Name="writeFiles" Width="80" Height="20" Content="Write Files" Grid.Row="2" Grid.Column="5" Click="writeFiles_Click"/>
+            <Button x:Name="dbBrowse" Width="80" Height="20" Content="Browse..." Grid.Column="5" Click="DbBrowse_Click"/>
+            <Button x:Name="dbsBrowse" Width="80" Height="20" Content="Browse..." Grid.Row="1" Grid.Column="5" Click="DbsBrowse_Click"/>
+            <Button x:Name="writeFiles" Width="80" Height="20" Content="Write Files" Grid.Row="2" Grid.Column="5" Click="WriteFiles_Click"/>
         </Grid>
     </Grid>
 </Window>
