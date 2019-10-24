@@ -16,7 +16,6 @@
                 <DataGridTextColumn Binding="{Binding ID}" Header="ID" Width="50"/>
                 <DataGridTextColumn Binding="{Binding Title}" Header="Title" Width="*"/>
                 <DataGridTextColumn Binding="{Binding Artist}" Header="Artist" Width="*"/>
-                <DataGridTextColumn Binding="{Binding ShortPath}" Header="Short Path" Width="*"/>
                 <DataGridTextColumn Binding="{Binding Path}" Header="Path" Width="*"/>
             </DataGrid.Columns>
         </DataGrid>

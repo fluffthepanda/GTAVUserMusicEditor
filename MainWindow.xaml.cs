@@ -170,16 +170,8 @@ namespace GTAVUserMusicEditor
             {
                 try
                 {
-                    if (m.Value == GetShortPath(m.Value))
-                    {
                         tracks.Find(x => x.ID == i).Path = System.IO.Path.GetFullPath(m.Value.Replace(@"\\", @"\"));
-                        tracks.Find(x => x.ID == i).ShortPath = m.Value.Replace(@"\\", @"\");
-                    }
-                    else
-                    {
-                        tracks.Find(x => x.ID == i).Path = m.Value.Replace(@"\\", @"\");
                         tracks.Find(x => x.ID == i).ShortPath = GetShortPath(m.Value.Replace(@"\\", @"\"));
-                    }
                 }
                 catch (Exception)
                 {
