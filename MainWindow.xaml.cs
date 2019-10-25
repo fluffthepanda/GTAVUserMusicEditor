@@ -17,6 +17,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Microsoft.WindowsAPICodePack.Shell;
 
 namespace GTAVUserMusicEditor
 {
@@ -127,6 +128,7 @@ namespace GTAVUserMusicEditor
             }
 
             BinaryReader br = new BinaryReader(fs);
+            BinaryReader brdbs = new BinaryReader(fsdbs);
             int counter = 0;
             while (fs.CanRead && fs.Position < fs.Length)
             {
@@ -134,11 +136,18 @@ namespace GTAVUserMusicEditor
                 {
                     break;
                 }
-                byte[] chunkBegin = br.ReadBytes(8);
+                byte[] header = br.ReadBytes(8);
                 byte[] chunkArtist = br.ReadBytes(31);
                 byte chunkSeparator = br.ReadByte();
                 byte[] chunkTitle = br.ReadBytes(31);
-                byte[] chunkEnd = br.ReadBytes(25);
+                byte chunkSeparator2 = br.ReadByte();
+                byte[] duration = br.ReadBytes(4);
+                byte[] unknown = br.ReadBytes(12);
+                byte[] footer = br.ReadBytes(4);
+                byte[] pathByteLength = br.ReadBytes(4);
+                int pathLength = BitConverter.ToInt32(pathByteLength) * 2;
+
+                string path = Encoding.Unicode.GetString(brdbs.ReadBytes(pathLength));
 
                 string artist = "";
                 string title = "";
@@ -158,31 +167,12 @@ namespace GTAVUserMusicEditor
                     }
                     title += (char)b;
                 }
-                tracks.Add(new Track() { ID = counter, Title = title, Artist = artist });
+                tracks.Add(new Track() { ID = counter, Title = title, Artist = artist, ShortPath = GetShortPath(path.Replace(@"\\", @"\")), Path = System.IO.Path.GetFullPath(path.Replace(@"\\", @"\")), Duration = BitConverter.ToInt32(duration) });
                 counter++;
             }
 
-            StreamReader sr = new StreamReader(fsdbs, Encoding.Unicode);
-            string raw = sr.ReadToEnd();
-            MatchCollection matches = Regex.Matches(raw, "\\G([A-Z]:.+?(?:\\.MP3|\\.M4A|\\.AAC|\\.WMA))", RegexOptions.IgnoreCase);
-            int i = 0;
-            foreach (Match m in matches)
-            {
-                try
-                {
-                        tracks.Find(x => x.ID == i).Path = System.IO.Path.GetFullPath(m.Value.Replace(@"\\", @"\"));
-                        tracks.Find(x => x.ID == i).ShortPath = GetShortPath(m.Value.Replace(@"\\", @"\"));
-                }
-                catch (Exception)
-                {
-                    MessageBox.Show("Could not find ID: " + i);
-                    break;
-                }
-                i++;
-            }
-
             br.Close();
-            sr.Close();
+            brdbs.Close();
             fs.Close();
             fsdbs.Close();
 
@@ -196,18 +186,6 @@ namespace GTAVUserMusicEditor
             {
                 return;
             }
-
-            if(ConfigurationManager.AppSettings.Get("key") == null || ConfigurationManager.AppSettings.Get("path") == null || ConfigurationManager.AppSettings.Get("doubleSlash") == null)
-            {
-                MessageBox.Show("Cannot write files until a key is saved.");
-                return;
-            }
-
-            byte[] key = StringToByteArray(ConfigurationManager.AppSettings.Get("key"));
-            byte[] chunkStart = key.AsSpan(0, 8).ToArray();
-            byte[] chunkSeparator = key.AsSpan(8, 1).ToArray();
-            byte[] chunkEnd = key.AsSpan(9, 25).ToArray();
-
             if (!File.Exists(dbFile.Text))
             {
                 MessageBox.Show("Please select a valid database file.");
@@ -265,41 +243,32 @@ namespace GTAVUserMusicEditor
 
             BinaryWriter bw = new BinaryWriter(fs);
             BinaryWriter bwdbs = new BinaryWriter(fsdbs);
+            string userMusicPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + @"\Rockstar Games\GTA V\User Music";
             foreach (Track t in tracks)
             {
+                byte[] header = BitConverter.GetBytes(t.ID);
+                byte[] header2 = { 0x00, 0x00, 0x00, 0x00 };
+                byte[] chunkSeparator = { 0x00 };
                 byte[] chunkTitle = StrToPaddedChunk(t.Title, 31, 0x00, Encoding.Default);
                 byte[] chunkArtist = StrToPaddedChunk(t.Artist, 31, 0x00, Encoding.Default);
-                byte[] chunk = chunkStart.Concat(chunkArtist).Concat(chunkSeparator).Concat(chunkTitle).Concat(chunkEnd).ToArray();
-                bw.Write(chunk);
+                byte[] duration = BitConverter.GetBytes(t.Duration);
+                byte[] unknown = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+                byte[] footer = { 0x02, 0x00, 0x00, 0x00 };
+                
                 string final_path = t.Path;
-                if (ConfigurationManager.AppSettings.Get("path") == "short")
+                if(final_path.Contains(userMusicPath))
                 {
-                    final_path = GetShortPath(t.Path);
-                }
-                else if (ConfigurationManager.AppSettings.Get("path") == "long")
-                {
-                    final_path = t.Path;
-                }
-                else if (ConfigurationManager.AppSettings.Get("path") == "hybrid")
-                {
-                    final_path = GetShortPath(t.Path);
-                    final_path = final_path.Substring(0, final_path.LastIndexOf(@"\"));
-                    final_path += t.Path.Substring(t.Path.LastIndexOf(@"\"));
-                }
-                if (bool.Parse(ConfigurationManager.AppSettings.Get("doubleSlash")))
-                {
-                    if (!final_path.Contains(@"\\"))
-                    {
-                        final_path = final_path.Insert(final_path.LastIndexOf(@"\"), @"\");
-                    }
+                    final_path = final_path.Insert(userMusicPath.Length, @"\"); //GTA wants a double slash after User Music for some reason
                 }
                 else
                 {
-                    if (final_path.Contains(@"\\"))
-                    {
-                        final_path = final_path.Replace(@"\\", @"\");
-                    }
+                    final_path = GetShortPath(final_path);
                 }
+                byte[] pathLength = BitConverter.GetBytes(final_path.Length);
+
+                byte[] chunk = header.Concat(header2).Concat(chunkArtist).Concat(chunkSeparator).Concat(chunkTitle).Concat(chunkSeparator).Concat(duration).Concat(unknown).Concat(footer).Concat(pathLength).ToArray();
+
+                bw.Write(chunk);
                 bwdbs.Write(Encoding.Unicode.GetBytes(final_path));
             }
 
@@ -381,23 +350,37 @@ namespace GTAVUserMusicEditor
                 bool showInvalidExtension = false;
                 foreach (string f in files)
                 {
-
-                    if (f.LastIndexOf('.') >= 0)
+                    string fileName = f;
+                    if (fileName.LastIndexOf('.') >= 0)
                     {
                         string ext;
                         try
                         {
-                            ext = f.Substring(f.LastIndexOf('.'), 4).ToLower();
+                            ext = fileName.Substring(fileName.LastIndexOf('.'), 4).ToLower();
                         }
                         catch (Exception)
                         {
                             showInvalidExtension = true;
                             continue;
                         }
-                        if (ext != ".mp3" && ext != ".m4a" && ext != ".aac" && ext != ".wma")
+                        if (ext != ".mp3" && ext != ".m4a" && ext != ".aac" && ext != ".wma" && ext != ".lnk")
                         {
                             showInvalidExtension = true;
                             continue;
+                        }
+                        if(ext == ".lnk")
+                        {
+                            try
+                            {
+                                IWshRuntimeLibrary.WshShell wsh = new IWshRuntimeLibrary.WshShell();
+                                IWshRuntimeLibrary.IWshShortcut shortcut = (IWshRuntimeLibrary.IWshShortcut)wsh.CreateShortcut(fileName);
+                                fileName = shortcut.TargetPath;
+                            }
+                            catch(Exception)
+                            {
+                                showFailMessage = true;
+                                return;
+                            }
                         }
                     }
                     else
@@ -407,17 +390,21 @@ namespace GTAVUserMusicEditor
                     }
                     string title;
                     string artist;
-                    string shortPath = GetShortPath(f);
+                    int duration;
+                    string shortPath = GetShortPath(fileName);
                     try
                     {
-                        var t = TagLib.File.Create(f);
+                        var t = TagLib.File.Create(fileName);
                         title = t.Tag.Title;
                         artist = t.Tag.FirstPerformer;
+                        duration = (int)(GetAudioDuration(fileName).TotalSeconds * 1000);
+                        t.Dispose();
                     }
                     catch (Exception)
                     {
                         title = "<unknown title>";
                         artist = "<unknown artist>";
+                        duration = 180000; //average song length?
                         showFailMessage = true;
                     }
 
@@ -432,11 +419,11 @@ namespace GTAVUserMusicEditor
 
                     if (tracks.Count > 0)
                     {
-                        tracks.Add(new Track() { ID = tracks.Max(x => x.ID) + 1, Title = title, Artist = artist, ShortPath = shortPath, Path = f });
+                        tracks.Add(new Track() { ID = tracks.Max(x => x.ID) + 1, Title = title, Artist = artist, ShortPath = shortPath, Path = fileName, Duration = duration });
                     }
                     else
                     {
-                        tracks.Add(new Track() { ID = 0, Title = title, Artist = artist, ShortPath = shortPath, Path = f });
+                        tracks.Add(new Track() { ID = 0, Title = title, Artist = artist, ShortPath = shortPath, Path = fileName, Duration = duration });
                     }
                 }
 
@@ -505,137 +492,14 @@ namespace GTAVUserMusicEditor
             }
         }
 
-        private void SaveKeyButton_Click(object sender, RoutedEventArgs e)
+        private static TimeSpan GetAudioDuration(string filePath)
         {
-            if(ConfigurationManager.AppSettings.Get("key") != null && ConfigurationManager.AppSettings.Get("path") != null && ConfigurationManager.AppSettings.Get("doubleSlash") != null && MessageBox.Show("You already have a key saved. Overwrite the key?", "Overwrite Key", MessageBoxButton.YesNoCancel) != MessageBoxResult.Yes)
+            using (var shell = Microsoft.WindowsAPICodePack.Shell.ShellObject.FromParsingName(filePath))
             {
-                return;
+                Microsoft.WindowsAPICodePack.Shell.PropertySystem.IShellProperty prop = shell.Properties.System.Media.Duration;
+                var t = (ulong)prop.ValueAsObject;
+                return TimeSpan.FromTicks((long)t);
             }
-            if (!File.Exists(dbFile.Text))
-            {
-                MessageBox.Show("Please select a valid database file.");
-                return;
-            }
-            if (!File.Exists(dbsFile.Text))
-            {
-                MessageBox.Show("Please select a valid database file.");
-                return;
-            }
-
-            FileStream fs;
-            FileStream fsdbs;
-
-            try
-            {
-                fs = new FileStream(dbFile.Text, FileMode.Open, FileAccess.Read);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Could not open \"" + dbFile.Text + "\": " + "\n" + ex.Message);
-                return;
-            }
-
-            try
-            {
-                fsdbs = new FileStream(dbsFile.Text, FileMode.Open, FileAccess.Read);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Could not open \"" + dbsFile.Text + "\": " + "\n" + ex.Message);
-                return;
-            }
-
-            if (fs.Length % 96 != 0)
-            {
-                MessageBox.Show("The usertracks.db file is corrupt!","Cannot Read Key");
-            }
-
-            BinaryReader br = new BinaryReader(fs);
-            byte[] chunkStart = br.ReadBytes(8);
-            br.BaseStream.Position = 39;
-            byte[] chunkSeparator = { br.ReadByte() };
-            br.BaseStream.Position = 71;
-            byte[] chunkEnd = br.ReadBytes(25);
-
-            byte[] key = chunkStart.Concat(chunkSeparator).Concat(chunkEnd).ToArray();
-
-            AddUpdateAppSettings("key", BitConverter.ToString(key).Replace("-", ""));
-
-            StreamReader sr = new StreamReader(fsdbs, Encoding.Unicode);
-            string raw = sr.ReadToEnd();
-            MatchCollection matches = Regex.Matches(raw, "\\G([A-Z]:.+?(?:\\.MP3|\\.M4A|\\.AAC|\\.WMA))", RegexOptions.IgnoreCase);
-            Match m = matches[0];
-            string full = System.IO.Path.GetFullPath(m.Value);
-            if (GetShortPath(m.Value) == m.Value)
-            {
-                AddUpdateAppSettings("path", "short");
-            }
-            else if (m.Value.Contains("~") && m.Value.Substring(m.Value.LastIndexOf(@"\")) == full.Substring(full.LastIndexOf(@"\")))
-            {
-                AddUpdateAppSettings("path", "hybrid");
-            }
-            else
-            {
-                AddUpdateAppSettings("path", "long");
-            }
-
-            if (m.Value.Contains(@"\\"))
-            {
-                AddUpdateAppSettings("doubleSlash", "true");
-            }
-            else
-            {
-                AddUpdateAppSettings("doubleSlash", "false");
-            }
-
-            br.Close();
-            sr.Close();
-            fs.Close();
-            fsdbs.Close();
-            MessageBox.Show("Detected settings:                                  " +
-                "\n\nPath type: " + ConfigurationManager.AppSettings.Get("path") + "\nDouble slash: " + (bool.Parse(ConfigurationManager.AppSettings.Get("doubleSlash")) ? "Yes" : "No"), "Key Saved!");
-        }
-
-        static void AddUpdateAppSettings(string key, string value)
-        {
-            try
-            {
-                var configFile = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
-                var settings = configFile.AppSettings.Settings;
-                if (settings[key] == null)
-                {
-                    settings.Add(key, value);
-                }
-                else
-                {
-                    settings[key].Value = value;
-                }
-                configFile.Save(ConfigurationSaveMode.Modified);
-                ConfigurationManager.RefreshSection(configFile.AppSettings.SectionInformation.Name);
-            }
-            catch (ConfigurationErrorsException)
-            {
-                MessageBox.Show("Error writing app settings");
-            }
-        }
-
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
-            var appSettings = ConfigurationManager.AppSettings;
-
-            if (appSettings.Get("key") == null || appSettings.Get("path") == null || appSettings.Get("doubleSlash") == null)
-            {
-                MessageBox.Show("No key data found. Please generate a playlist with GTA V, then click Save Key.", "No Key Data");
-            }
-        }
-
-        public static byte[] StringToByteArray(String hex)
-        {
-            int NumberChars = hex.Length;
-            byte[] bytes = new byte[NumberChars / 2];
-            for (int i = 0; i < NumberChars; i += 2)
-                bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
-            return bytes;
         }
     }
 
@@ -646,6 +510,7 @@ namespace GTAVUserMusicEditor
         private string artist;
         private string shortPath;
         private string path;
+        private int duration;
 
         public int ID
         {
@@ -675,6 +540,12 @@ namespace GTAVUserMusicEditor
         {
             get { return path; }
             set { path = value; }
+        }
+
+        public int Duration
+        {
+            get { return duration; }
+            set { duration = value; }
         }
     }
 }

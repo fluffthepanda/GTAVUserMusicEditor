@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GTAVUserMusicEditor"
         mc:Ignorable="d"
-        Title="GTA V User Music Editor" Height="450" Width="800" MinHeight="450" MinWidth="800" Loaded="Window_Loaded">
+        Title="GTA V User Music Editor" Height="450" Width="800" MinHeight="450" MinWidth="800">
     <Window.Resources>
         <CollectionViewSource x:Key="ItemCollectionViewSource" CollectionViewType="ListCollectionView"/>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
@@ -17,6 +17,7 @@
                 <DataGridTextColumn Binding="{Binding Title}" Header="Title" Width="*"/>
                 <DataGridTextColumn Binding="{Binding Artist}" Header="Artist" Width="*"/>
                 <DataGridTextColumn Binding="{Binding Path}" Header="Path" Width="*"/>
+                <DataGridTextColumn Binding="{Binding Duration}" Header="Duration (ms)" Width="*"/>
             </DataGrid.Columns>
         </DataGrid>
         <TextBlock x:Name="dragTracksMessage" Text="Drag audio files here" Width="280" Height="50" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Top" Foreground="#FF707070" TextAlignment="Center" Visibility="{Binding Items.IsEmpty, Converter={StaticResource ResourceKey=BooleanToVisibilityConverter}, ElementName=trackList}" Margin="0,150,0,0" Drop="TrackList_Drop" AllowDrop="True"/>
@@ -51,8 +52,6 @@
             <TextBox x:Name="dbFile" Height="20" Grid.Column="3" Grid.ColumnSpan="2" Text="No file selected."/>
             <TextBox x:Name="dbsFile" Height="20" Grid.Row="1" Grid.Column="3" Grid.ColumnSpan="2" Text="No file selected."/>
             <Button x:Name="dedupeButton" Content="Remove Duplicates" Width="120" Height="20" Grid.Row="2" Grid.Column="3" HorizontalAlignment="Left" Click="DedupeButton_Click"/>
-
-            <Button x:Name="SaveKeyButton" Width="80" Height="20" Content="Save Key" Grid.Row="2" Grid.Column="4" HorizontalAlignment="Left" Click="SaveKeyButton_Click"/>
             <Button x:Name="LoadButton" Width="80" Height="20" Content="Load Tracks" Grid.Row="2" Grid.Column="4" HorizontalAlignment="Right" Click="LoadButton_Click"/>
 
             <Button x:Name="dbBrowse" Width="80" Height="20" Content="Browse..." Grid.Column="5" Click="DbBrowse_Click"/>

@@ -8,12 +8,19 @@
     <UseWPF>true</UseWPF>
     <ApplicationIcon>note_icon-icons.com_60150.ico</ApplicationIcon>
     <StartupObject>GTAVUserMusicEditor.App</StartupObject>
-    <Version>0.99</Version>
+    <Version>1.0</Version>
     <Authors>Fluff the Panda</Authors>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="taglib" Version="2.1.0" />
+    <PackageReference Include="WindowsAPICodePack-Shell" Version="1.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="IWshRuntimeLibrary">
+      <HintPath>IWshRuntimeLibrary.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>
