@@ -52,6 +52,8 @@
             <TextBox x:Name="dbFile" Height="20" Grid.Column="3" Grid.ColumnSpan="2" Text="No file selected."/>
             <TextBox x:Name="dbsFile" Height="20" Grid.Row="1" Grid.Column="3" Grid.ColumnSpan="2" Text="No file selected."/>
             <Button x:Name="dedupeButton" Content="Remove Duplicates" Width="120" Height="20" Grid.Row="2" Grid.Column="3" HorizontalAlignment="Left" Click="DedupeButton_Click"/>
+
+            <Button x:Name="RescanButton" Width="80" Height="20" Content="Re-Scan All" Grid.Row="2" Grid.Column="4" HorizontalAlignment="Left" Click="RescanButton_Click"/>
             <Button x:Name="LoadButton" Width="80" Height="20" Content="Load Tracks" Grid.Row="2" Grid.Column="4" HorizontalAlignment="Right" Click="LoadButton_Click"/>
 
             <Button x:Name="dbBrowse" Width="80" Height="20" Content="Browse..." Grid.Column="5" Click="DbBrowse_Click"/>

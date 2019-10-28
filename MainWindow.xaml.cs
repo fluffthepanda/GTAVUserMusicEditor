@@ -28,6 +28,7 @@ namespace GTAVUserMusicEditor
     public partial class MainWindow : Window
     {
         List<Track> tracks = new List<Track>();
+        bool lockTracks = false;
 
         public MainWindow()
         {
@@ -71,6 +72,7 @@ namespace GTAVUserMusicEditor
 
         private void LoadButton_Click(object sender, RoutedEventArgs e)
         {
+            if (lockTracks) return;
             if (!File.Exists(dbFile.Text))
             {
                 MessageBox.Show("Please select a valid database file.");
@@ -183,6 +185,7 @@ namespace GTAVUserMusicEditor
 
         private void WriteFiles_Click(object sender, RoutedEventArgs e)
         {
+            if (lockTracks) return;
             if (MessageBox.Show("Are you sure you want to overwrite the database?", "Confirm Overwrite", MessageBoxButton.YesNoCancel) != MessageBoxResult.Yes)
             {
                 return;
@@ -313,6 +316,7 @@ namespace GTAVUserMusicEditor
 
         private void DeleteAllButton_Click(object sender, RoutedEventArgs e)
         {
+            if (lockTracks) return;
             if (tracks.Count < 1)
             {
                 return;
@@ -342,10 +346,12 @@ namespace GTAVUserMusicEditor
 
         private void TrackList_Drop(object sender, DragEventArgs e)
         {
+            if (lockTracks) return;
             Task.Run(() =>
             {
                 this.Dispatcher.Invoke(() =>
                 {
+                    lockTracks = true;
                     ProgBar.Visibility = Visibility.Visible;
                     ProgBarText.Visibility = Visibility.Visible;
                     trackList.AllowDrop = false;
@@ -396,13 +402,13 @@ namespace GTAVUserMusicEditor
                                         ProgBar.Value = ((double)++i / (double)numFiles) * 100;
                                         ProgBarText.Text = "" + i + " / " + numFiles;
                                     });
-                                    showFailMessage = AddFileToTracks(trk);
+                                    if (!AddFileToTracks(trk)) showFailMessage = true;
                                 }
                             }
                         }
                         else if (IsValidAudioExt(fileName))
                         {
-                            showFailMessage = AddFileToTracks(fileName);
+                            if (!AddFileToTracks(fileName)) showFailMessage = true;
                         }
                         else
                         {
@@ -436,6 +442,7 @@ namespace GTAVUserMusicEditor
                 }
                 this.Dispatcher.Invoke(() =>
                 {
+                    lockTracks = false;
                     ProgBar.Visibility = Visibility.Hidden;
                     ProgBarText.Visibility = Visibility.Hidden;
                     ProgBar.Value = 0;
@@ -470,6 +477,7 @@ namespace GTAVUserMusicEditor
 
         private void DeleteButton_Click(object sender, RoutedEventArgs e)
         {
+            if (lockTracks) return;
             if (trackList.SelectedItems != null && trackList.SelectedItems.Count > 0 && trackList.SelectedItem.GetType() == typeof(Track))
             {
                 foreach (Track t in trackList.SelectedItems)
@@ -483,6 +491,7 @@ namespace GTAVUserMusicEditor
 
         private void DedupeButton_Click(object sender, RoutedEventArgs e)
         {
+            if (lockTracks) return;
             if (tracks.Count > 0)
             {
                 List<Track> noDupes = new List<Track>(tracks.GroupBy(x => new { x.Artist, x.Title }).Select(x => x.First()).ToList());
@@ -518,6 +527,10 @@ namespace GTAVUserMusicEditor
 
         private bool AddFileToTracks(string file)
         {
+            if(!File.Exists(file))
+            {
+                return false;
+            }
             string title;
             string artist;
             TimeSpan duration;
@@ -557,7 +570,7 @@ namespace GTAVUserMusicEditor
                 tracks.Add(new Track() { ID = 0, Title = title, Artist = artist, ShortPath = shortPath, Path = file, Duration = duration });
             }
 
-            return fail;
+            return !fail;
         }
 
         private string ReplaceProblemChars(string s)
@@ -578,6 +591,49 @@ namespace GTAVUserMusicEditor
             if (s.IndexOf('\u2033') > -1) s = s.Replace('\u2033', '\"');
 
             return s;
+        }
+
+        private void RescanButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (lockTracks) return;
+            Task.Run(() =>
+            {
+                Track[] data = tracks.ToArray();
+                this.Dispatcher.Invoke(() =>
+                {
+                    lockTracks = true;
+                    ProgBar.Visibility = Visibility.Visible;
+                    ProgBarText.Visibility = Visibility.Visible;
+                    trackList.AllowDrop = false;
+                    dragTracksMessage.AllowDrop = false;
+                    tracks.Clear();
+                });
+                for(int i = 0; i < data.Length; i++)
+                {
+                    AddFileToTracks(data[i].Path);
+                    this.Dispatcher.Invoke(() =>
+                    {
+                        ProgBar.Value = ((double)i / (double)data.Length) * 100;
+                        ProgBarText.Text = "" + i + " / " + data.Length;
+                    });
+                }
+                this.Dispatcher.Invoke(() =>
+                {
+                    ((ListCollectionView)trackList.ItemsSource).Refresh();
+                    trackList.Items.Refresh();
+                    lockTracks = false;
+                    ProgBar.Visibility = Visibility.Hidden;
+                    ProgBarText.Visibility = Visibility.Hidden;
+                    ProgBar.Value = 0;
+                    ProgBarText.Text = "";
+                    trackList.AllowDrop = true;
+                    dragTracksMessage.AllowDrop = true;
+                    if(data.Length != tracks.Count)
+                    {
+                        MessageBox.Show("" + (data.Length - tracks.Count) + " files could not be found and were removed.");
+                    }
+                });
+            });
         }
     }
 
