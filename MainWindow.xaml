@@ -60,5 +60,6 @@
             <Button x:Name="dbsBrowse" Width="80" Height="20" Content="Browse..." Grid.Row="1" Grid.Column="5" Click="DbsBrowse_Click"/>
             <Button x:Name="writeFiles" Width="80" Height="20" Content="Write Files" Grid.Row="2" Grid.Column="5" Click="WriteFiles_Click"/>
         </Grid>
+        <TextBlock x:Name="VersionText" Width="50" Height="12" Text="" VerticalAlignment="Bottom" HorizontalAlignment="Left" FontFamily="Arial" FontSize="10" FontWeight="Bold" Padding="3,0,0,0" Foreground="Gray"/>
     </Grid>
 </Window>

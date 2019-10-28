@@ -19,6 +19,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Microsoft.WindowsAPICodePack.Shell;
 using System.ComponentModel;
+using System.Reflection;
 
 namespace GTAVUserMusicEditor
 {
@@ -46,6 +47,11 @@ namespace GTAVUserMusicEditor
             {
                 dbsFile.Text = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\Rockstar Games\\GTA V\\User Music\\usertracks.dbs";
             }
+
+            string version = "v" + Assembly.GetExecutingAssembly().GetName().Version.Major + "." + Assembly.GetExecutingAssembly().GetName().Version.Minor;
+            if (Assembly.GetExecutingAssembly().GetName().Version.Revision != 0) version += "." + Assembly.GetExecutingAssembly().GetName().Version.Build + "." + Assembly.GetExecutingAssembly().GetName().Version.Revision;
+            else if (Assembly.GetExecutingAssembly().GetName().Version.Build != 0) version += "." + Assembly.GetExecutingAssembly().GetName().Version.Build;
+            VersionText.Text = version;
         }
 
         private void DbBrowse_Click(object sender, RoutedEventArgs e)
@@ -67,6 +73,78 @@ namespace GTAVUserMusicEditor
             if (fd.ShowDialog() ?? true)
             {
                 dbsFile.Text = fd.FileName;
+            }
+        }
+
+        private void DedupeButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (lockTracks) return;
+            if (tracks.Count > 0)
+            {
+                List<Track> noDupes = new List<Track>(tracks.GroupBy(x => new { x.Artist, x.Title }).Select(x => x.First()).ToList());
+                if (tracks.Count != noDupes.Count)
+                {
+                    tracks.Clear();
+                    tracks.AddRange(noDupes);
+                    ((ListCollectionView)trackList.ItemsSource).Refresh();
+                    trackList.Items.Refresh();
+                }
+            }
+        }
+
+        private void DeleteButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (lockTracks) return;
+            if (trackList.SelectedItems != null && trackList.SelectedItems.Count > 0 && trackList.SelectedItem.GetType() == typeof(Track))
+            {
+                foreach (Track t in trackList.SelectedItems)
+                {
+                    tracks.Remove(t);
+                }
+                ((ListCollectionView)trackList.ItemsSource).Refresh();
+                trackList.Items.Refresh();
+            }
+        }
+
+        private void DeleteAllButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (lockTracks) return;
+            if (tracks.Count < 1)
+            {
+                return;
+            }
+            if (MessageBox.Show("Are you sure you want to clear the track list?", "Confirm Clear", MessageBoxButton.YesNoCancel) != MessageBoxResult.Yes)
+            {
+                return;
+            }
+            tracks.Clear();
+            ArtistBox.Text = "";
+            TitleBox.Text = "";
+            EditButton.IsEnabled = false;
+            DeleteButton.IsEnabled = false;
+            ((ListCollectionView)trackList.ItemsSource).Refresh();
+            trackList.Items.Refresh();
+        }
+
+        private void EditButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (trackList.SelectedItem != null && trackList.SelectedItem.GetType() == typeof(Track))
+            {
+                ((Track)trackList.SelectedItem).Title = TitleBox.Text;
+                ((Track)trackList.SelectedItem).Artist = ArtistBox.Text;
+                ((ListCollectionView)trackList.ItemsSource).Refresh();
+                trackList.Items.Refresh();
+            }
+        }
+
+        private void TrackList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (trackList.SelectedItem != null && trackList.SelectedItem.GetType() == typeof(Track))
+            {
+                TitleBox.Text = ((Track)trackList.SelectedItem).Title;
+                ArtistBox.Text = ((Track)trackList.SelectedItem).Artist;
+                EditButton.IsEnabled = true;
+                DeleteButton.IsEnabled = true;
             }
         }
 
@@ -170,7 +248,7 @@ namespace GTAVUserMusicEditor
                     }
                     title += (char)b;
                 }
-                tracks.Add(new Track() { ID = counter, Title = title, Artist = artist, ShortPath = GetShortPath(path.Replace(@"\\", @"\")), Path = System.IO.Path.GetFullPath(path.Replace(@"\\", @"\")), Duration = TimeSpan.FromMilliseconds(BitConverter.ToInt32(duration)) });
+                tracks.Add(new Track() { ID = counter, Title = title, Artist = artist, ShortPath = TrackUtilities.GetShortPath(path.Replace(@"\\", @"\")), Path = System.IO.Path.GetFullPath(path.Replace(@"\\", @"\")), Duration = TimeSpan.FromMilliseconds(BitConverter.ToInt32(duration)) });
                 counter++;
             }
 
@@ -253,8 +331,8 @@ namespace GTAVUserMusicEditor
                 byte[] header = BitConverter.GetBytes(t.ID);
                 byte[] header2 = { 0x00, 0x00, 0x00, 0x00 };
                 byte[] chunkSeparator = { 0x00 };
-                byte[] chunkTitle = StrToPaddedChunk(t.Title, 31, 0x00, Encoding.Default);
-                byte[] chunkArtist = StrToPaddedChunk(t.Artist, 31, 0x00, Encoding.Default);
+                byte[] chunkTitle = TrackUtilities.StrToPaddedChunk(t.Title, 31, 0x00, Encoding.Default);
+                byte[] chunkArtist = TrackUtilities.StrToPaddedChunk(t.Artist, 31, 0x00, Encoding.Default);
                 byte[] duration = BitConverter.GetBytes((int)t.Duration.TotalMilliseconds);
                 byte[] unknown = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
                 byte[] footer = { 0x02, 0x00, 0x00, 0x00 };
@@ -266,7 +344,7 @@ namespace GTAVUserMusicEditor
                 }
                 else
                 {
-                    final_path = GetShortPath(final_path);
+                    final_path = TrackUtilities.GetShortPath(final_path);
                 }
                 byte[] pathLength = BitConverter.GetBytes(final_path.Length);
 
@@ -290,58 +368,6 @@ namespace GTAVUserMusicEditor
                 File.SetAttributes(dbsFile.Text, File.GetAttributes(dbsFile.Text) | FileAttributes.Hidden);
             }
             MessageBox.Show("Be sure to set the files to read-only prior to launching the game.\n\nAlternatively, disable the \"Auto-scan for Music\" setting in-game.", "Database files written");
-        }
-
-        private byte[] StrToPaddedChunk(string input, int length, byte padChar, Encoding enc)
-        {
-            byte[] chunk = new byte[length];
-            if (input.Length >= length)
-            {
-                input = input.Substring(0, length);
-            }
-            byte[] tmp = enc.GetBytes(input);
-            for (int i = 0; i < length; i++)
-            {
-                if (i < tmp.Length)
-                {
-                    chunk[i] = tmp[i];
-                }
-                else
-                {
-                    chunk[i] = padChar;
-                }
-            }
-            return chunk;
-        }
-
-        private void DeleteAllButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (lockTracks) return;
-            if (tracks.Count < 1)
-            {
-                return;
-            }
-            if (MessageBox.Show("Are you sure you want to clear the track list?", "Confirm Clear", MessageBoxButton.YesNoCancel) != MessageBoxResult.Yes)
-            {
-                return;
-            }
-            tracks.Clear();
-            ArtistBox.Text = "";
-            TitleBox.Text = "";
-            EditButton.IsEnabled = false;
-            DeleteButton.IsEnabled = false;
-            ((ListCollectionView)trackList.ItemsSource).Refresh();
-            trackList.Items.Refresh();
-        }
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
-        public static extern uint GetShortPathName(string lpszLongPath, StringBuilder lpszShortPath, uint cchBuffer);
-
-        private static string GetShortPath(string longPath)
-        {
-            StringBuilder shortPath = new StringBuilder(255);
-            GetShortPathName(longPath, shortPath, 255);
-            return shortPath.ToString();
         }
 
         private void TrackList_Drop(object sender, DragEventArgs e)
@@ -402,13 +428,13 @@ namespace GTAVUserMusicEditor
                                         ProgBar.Value = ((double)++i / (double)numFiles) * 100;
                                         ProgBarText.Text = "" + i + " / " + numFiles;
                                     });
-                                    if (!AddFileToTracks(trk)) showFailMessage = true;
+                                    if (!TrackUtilities.AddFileToTracks(trk, ref tracks)) showFailMessage = true;
                                 }
                             }
                         }
-                        else if (IsValidAudioExt(fileName))
+                        else if (TrackUtilities.IsValidAudioExt(fileName))
                         {
-                            if (!AddFileToTracks(fileName)) showFailMessage = true;
+                            if (!TrackUtilities.AddFileToTracks(fileName, ref tracks)) showFailMessage = true;
                         }
                         else
                         {
@@ -453,146 +479,6 @@ namespace GTAVUserMusicEditor
             });
         }
 
-        private void TrackList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (trackList.SelectedItem != null && trackList.SelectedItem.GetType() == typeof(Track))
-            {
-                TitleBox.Text = ((Track)trackList.SelectedItem).Title;
-                ArtistBox.Text = ((Track)trackList.SelectedItem).Artist;
-                EditButton.IsEnabled = true;
-                DeleteButton.IsEnabled = true;
-            }
-        }
-
-        private void EditButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (trackList.SelectedItem != null && trackList.SelectedItem.GetType() == typeof(Track))
-            {
-                ((Track)trackList.SelectedItem).Title = TitleBox.Text;
-                ((Track)trackList.SelectedItem).Artist = ArtistBox.Text;
-                ((ListCollectionView)trackList.ItemsSource).Refresh();
-                trackList.Items.Refresh();
-            }
-        }
-
-        private void DeleteButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (lockTracks) return;
-            if (trackList.SelectedItems != null && trackList.SelectedItems.Count > 0 && trackList.SelectedItem.GetType() == typeof(Track))
-            {
-                foreach (Track t in trackList.SelectedItems)
-                {
-                    tracks.Remove(t);
-                }
-                ((ListCollectionView)trackList.ItemsSource).Refresh();
-                trackList.Items.Refresh();
-            }
-        }
-
-        private void DedupeButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (lockTracks) return;
-            if (tracks.Count > 0)
-            {
-                List<Track> noDupes = new List<Track>(tracks.GroupBy(x => new { x.Artist, x.Title }).Select(x => x.First()).ToList());
-                if (tracks.Count != noDupes.Count)
-                {
-                    tracks.Clear();
-                    tracks.AddRange(noDupes);
-                    ((ListCollectionView)trackList.ItemsSource).Refresh();
-                    trackList.Items.Refresh();
-                }
-            }
-        }
-
-        private static TimeSpan GetAudioDuration(string filePath)
-        {
-            using (var shell = Microsoft.WindowsAPICodePack.Shell.ShellObject.FromParsingName(filePath))
-            {
-                Microsoft.WindowsAPICodePack.Shell.PropertySystem.IShellProperty prop = shell.Properties.System.Media.Duration;
-                var t = (ulong)prop.ValueAsObject;
-                return TimeSpan.FromTicks((long)t);
-            }
-        }
-
-        private bool IsValidAudioExt(string file)
-        {
-            file = file.ToLower();
-            if(file.EndsWith(".mp3") || file.EndsWith(".m4a") || file.EndsWith(".aac") || file.EndsWith(".wma"))
-            {
-                return true;
-            }
-            return false;
-        }
-
-        private bool AddFileToTracks(string file)
-        {
-            if(!File.Exists(file))
-            {
-                return false;
-            }
-            string title;
-            string artist;
-            TimeSpan duration;
-            string shortPath = GetShortPath(file);
-            bool fail = false;
-            try
-            {
-                var t = TagLib.File.Create(file);
-                title = ReplaceProblemChars(t.Tag.Title);
-                artist = ReplaceProblemChars(t.Tag.FirstPerformer);
-                duration = GetAudioDuration(file);
-                t.Dispose();
-            }
-            catch (Exception)
-            {
-                title = "<unknown title>";
-                artist = "<unknown artist>";
-                duration = TimeSpan.FromSeconds(180); //average song length?
-                fail = true;
-            }
-
-            if (title.Length > 31)
-            {
-                title = title.Substring(0, 31);
-            }
-            if (artist.Length > 31)
-            {
-                artist = artist.Substring(0, 31);
-            }
-
-            if (tracks.Count > 0)
-            {
-                tracks.Add(new Track() { ID = tracks.Max(x => x.ID) + 1, Title = title, Artist = artist, ShortPath = shortPath, Path = file, Duration = duration });
-            }
-            else
-            {
-                tracks.Add(new Track() { ID = 0, Title = title, Artist = artist, ShortPath = shortPath, Path = file, Duration = duration });
-            }
-
-            return !fail;
-        }
-
-        private string ReplaceProblemChars(string s)
-        {
-            if (s.IndexOf('\u2013') > -1) s = s.Replace('\u2013', '-');
-            if (s.IndexOf('\u2014') > -1) s = s.Replace('\u2014', '-');
-            if (s.IndexOf('\u2015') > -1) s = s.Replace('\u2015', '-');
-            if (s.IndexOf('\u2017') > -1) s = s.Replace('\u2017', '_');
-            if (s.IndexOf('\u2018') > -1) s = s.Replace('\u2018', '\'');
-            if (s.IndexOf('\u2019') > -1) s = s.Replace('\u2019', '\'');
-            if (s.IndexOf('\u201a') > -1) s = s.Replace('\u201a', ',');
-            if (s.IndexOf('\u201b') > -1) s = s.Replace('\u201b', '\'');
-            if (s.IndexOf('\u201c') > -1) s = s.Replace('\u201c', '\"');
-            if (s.IndexOf('\u201d') > -1) s = s.Replace('\u201d', '\"');
-            if (s.IndexOf('\u201e') > -1) s = s.Replace('\u201e', '\"');
-            if (s.IndexOf('\u2026') > -1) s = s.Replace("\u2026", "...");
-            if (s.IndexOf('\u2032') > -1) s = s.Replace('\u2032', '\'');
-            if (s.IndexOf('\u2033') > -1) s = s.Replace('\u2033', '\"');
-
-            return s;
-        }
-
         private void RescanButton_Click(object sender, RoutedEventArgs e)
         {
             if (lockTracks) return;
@@ -610,7 +496,7 @@ namespace GTAVUserMusicEditor
                 });
                 for(int i = 0; i < data.Length; i++)
                 {
-                    AddFileToTracks(data[i].Path);
+                    TrackUtilities.AddFileToTracks(data[i].Path, ref tracks);
                     this.Dispatcher.Invoke(() =>
                     {
                         ProgBar.Value = ((double)i / (double)data.Length) * 100;
