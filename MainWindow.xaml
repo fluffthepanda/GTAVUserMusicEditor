@@ -16,8 +16,8 @@
                 <DataGridTextColumn Binding="{Binding ID}" Header="ID" Width="50"/>
                 <DataGridTextColumn Binding="{Binding Title}" Header="Title" Width="*"/>
                 <DataGridTextColumn Binding="{Binding Artist}" Header="Artist" Width="*"/>
+                <DataGridTextColumn Binding="{Binding Duration, StringFormat={}{0:%m}:{0:ss}}" Header="Length" Width="50"/>
                 <DataGridTextColumn Binding="{Binding Path}" Header="Path" Width="*"/>
-                <DataGridTextColumn Binding="{Binding Duration}" Header="Duration (ms)" Width="*"/>
             </DataGrid.Columns>
         </DataGrid>
         <TextBlock x:Name="dragTracksMessage" Text="Drag audio files here" Width="280" Height="50" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Top" Foreground="#FF707070" TextAlignment="Center" Visibility="{Binding Items.IsEmpty, Converter={StaticResource ResourceKey=BooleanToVisibilityConverter}, ElementName=trackList}" Margin="0,150,0,0" Drop="TrackList_Drop" AllowDrop="True"/>
@@ -39,11 +39,11 @@
 
             <TextBlock Text="Title:" VerticalAlignment="Center" Padding="5,0,0,0"/>
             <TextBlock Text="Artist:" VerticalAlignment="Center" Padding="5,0,0,0" Grid.Row="1"/>
-            <TextBlock Text="Path:" VerticalAlignment="Center" Padding="5,0,0,0" Grid.Row="2"/>
+            <ProgressBar x:Name="ProgBar" Height="20" Width="Auto" Grid.Row="2" Grid.Column="1" Visibility="Hidden"/>
+            <TextBlock x:Name="ProgBarText" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="2" Grid.Column="1" Visibility="Hidden"/>
 
             <TextBox x:Name="TitleBox" Height="20" Grid.Column="1"/>
             <TextBox x:Name="ArtistBox" Height="20" Grid.Row="1" Grid.Column="1"/>
-            <TextBlock x:Name="PathText" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center"/>
 
             <Button x:Name="EditButton" Content="Edit Track" Width="80" Height="20" IsEnabled="False" Grid.Column="2" Click="EditButton_Click"/>
             <Button x:Name="DeleteButton" Content="Delete Track" Width="80" Height="20" IsEnabled="False" Grid.Row="1" Grid.Column="2" Click="DeleteButton_Click"/>

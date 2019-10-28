@@ -18,6 +18,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using Microsoft.WindowsAPICodePack.Shell;
+using System.ComponentModel;
 
 namespace GTAVUserMusicEditor
 {
@@ -167,7 +168,7 @@ namespace GTAVUserMusicEditor
                     }
                     title += (char)b;
                 }
-                tracks.Add(new Track() { ID = counter, Title = title, Artist = artist, ShortPath = GetShortPath(path.Replace(@"\\", @"\")), Path = System.IO.Path.GetFullPath(path.Replace(@"\\", @"\")), Duration = BitConverter.ToInt32(duration) });
+                tracks.Add(new Track() { ID = counter, Title = title, Artist = artist, ShortPath = GetShortPath(path.Replace(@"\\", @"\")), Path = System.IO.Path.GetFullPath(path.Replace(@"\\", @"\")), Duration = TimeSpan.FromMilliseconds(BitConverter.ToInt32(duration)) });
                 counter++;
             }
 
@@ -251,7 +252,7 @@ namespace GTAVUserMusicEditor
                 byte[] chunkSeparator = { 0x00 };
                 byte[] chunkTitle = StrToPaddedChunk(t.Title, 31, 0x00, Encoding.Default);
                 byte[] chunkArtist = StrToPaddedChunk(t.Artist, 31, 0x00, Encoding.Default);
-                byte[] duration = BitConverter.GetBytes(t.Duration);
+                byte[] duration = BitConverter.GetBytes((int)t.Duration.TotalMilliseconds);
                 byte[] unknown = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
                 byte[] footer = { 0x02, 0x00, 0x00, 0x00 };
                 
@@ -323,7 +324,6 @@ namespace GTAVUserMusicEditor
             tracks.Clear();
             ArtistBox.Text = "";
             TitleBox.Text = "";
-            PathText.Text = "";
             EditButton.IsEnabled = false;
             DeleteButton.IsEnabled = false;
             ((ListCollectionView)trackList.ItemsSource).Refresh();
@@ -342,72 +342,108 @@ namespace GTAVUserMusicEditor
 
         private void TrackList_Drop(object sender, DragEventArgs e)
         {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            Task.Run(() =>
             {
-                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-
-                bool showFailMessage = false;
-                bool showInvalidExtension = false;
-                bool showMissingMessage = false;
-                foreach (string f in files)
+                this.Dispatcher.Invoke(() =>
                 {
-                    string fileName = f;
-                    if (fileName.EndsWith(".lnk"))
+                    ProgBar.Visibility = Visibility.Visible;
+                    ProgBarText.Visibility = Visibility.Visible;
+                    trackList.AllowDrop = false;
+                    dragTracksMessage.AllowDrop = false;
+                });
+                if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                {
+                    string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+
+                    int numFiles = files.Length;
+
+                    bool showFailMessage = false;
+                    bool showInvalidExtension = false;
+                    bool showMissingMessage = false;
+                    int i = 0;
+                    foreach (string f in files)
                     {
-                        try
+                        string fileName = f;
+                        if (fileName.EndsWith(".lnk"))
                         {
-                            IWshRuntimeLibrary.WshShell wsh = new IWshRuntimeLibrary.WshShell();
-                            IWshRuntimeLibrary.IWshShortcut shortcut = (IWshRuntimeLibrary.IWshShortcut)wsh.CreateShortcut(fileName);
-                            fileName = shortcut.TargetPath;
-                        }
-                        catch(Exception)
-                        {
-                            showFailMessage = true;
-                            continue;
-                        }
-                    }
-                    if(!File.Exists(fileName) && !Directory.Exists(fileName))
-                    {
-                        showMissingMessage = true;
-                        continue;
-                    }
-                    if(Directory.Exists(fileName)) //is Folder
-                    {
-                        string[][] sub = { Directory.GetFiles(fileName, "*.mp3"), Directory.GetFiles(fileName, "*.m4a"), Directory.GetFiles(fileName, "*.aac"), Directory.GetFiles(fileName, "*.wma") };
-                        foreach(string[] type in sub)
-                        {
-                            foreach(string file in type)
+                            try
                             {
-                                showFailMessage = AddFileToTracks(file);
+                                IWshRuntimeLibrary.WshShell wsh = new IWshRuntimeLibrary.WshShell();
+                                IWshRuntimeLibrary.IWshShortcut shortcut = (IWshRuntimeLibrary.IWshShortcut)wsh.CreateShortcut(fileName);
+                                fileName = shortcut.TargetPath;
+                            }
+                            catch (Exception)
+                            {
+                                showFailMessage = true;
+                                continue;
                             }
                         }
+                        if (!File.Exists(fileName) && !Directory.Exists(fileName))
+                        {
+                            showMissingMessage = true;
+                            continue;
+                        }
+                        if (Directory.Exists(fileName)) //is Folder
+                        {
+                            string[][] sub = { Directory.GetFiles(fileName, "*.mp3"), Directory.GetFiles(fileName, "*.m4a"), Directory.GetFiles(fileName, "*.aac"), Directory.GetFiles(fileName, "*.wma") };
+                            numFiles += sub[0].Length + sub[1].Length + sub[2].Length + sub[3].Length;
+                            foreach (string[] type in sub)
+                            {
+                                foreach (string trk in type)
+                                {
+                                    this.Dispatcher.Invoke(() =>
+                                    {
+                                        ProgBar.Value = ((double)++i / (double)numFiles) * 100;
+                                        ProgBarText.Text = "" + i + " / " + numFiles;
+                                    });
+                                    showFailMessage = AddFileToTracks(trk);
+                                }
+                            }
+                        }
+                        else if (IsValidAudioExt(fileName))
+                        {
+                            showFailMessage = AddFileToTracks(fileName);
+                        }
+                        else
+                        {
+                            showInvalidExtension = true;
+                            continue;
+                        }
+                        this.Dispatcher.Invoke(() =>
+                        {
+                            ProgBar.Value = ((double)++i / (double)numFiles) * 100;
+                            ProgBarText.Text = "" + i + " / " + numFiles;
+                        });
                     }
-                    else if(IsValidAudioExt(fileName))
+                    if (showFailMessage)
                     {
-                        showFailMessage = AddFileToTracks(fileName);
+                        MessageBox.Show("Failed to parse tags in one or more files");
                     }
-                    else
+                    if (showInvalidExtension)
                     {
-                        showInvalidExtension = true;
-                        continue;
+                        MessageBox.Show("One or more files were skipped due to an invalid extension.");
                     }
-                }
-                if (showFailMessage)
-                {
-                    MessageBox.Show("Failed to parse tags in one or more files");
-                }
-                if (showInvalidExtension)
-                {
-                    MessageBox.Show("One or more files were skipped due to an invalid extension.");
-                }
-                if(showMissingMessage)
-                {
-                    MessageBox.Show("One or more files were missing, so they were skipped.");
-                }
+                    if (showMissingMessage)
+                    {
+                        MessageBox.Show("One or more files were missing, so they were skipped.");
+                    }
 
-                ((ListCollectionView)trackList.ItemsSource).Refresh();
-                trackList.Items.Refresh();
-            }
+                    this.Dispatcher.Invoke(() =>
+                    {
+                        ((ListCollectionView)trackList.ItemsSource).Refresh();
+                        trackList.Items.Refresh();
+                    });
+                }
+                this.Dispatcher.Invoke(() =>
+                {
+                    ProgBar.Visibility = Visibility.Hidden;
+                    ProgBarText.Visibility = Visibility.Hidden;
+                    ProgBar.Value = 0;
+                    ProgBarText.Text = "";
+                    trackList.AllowDrop = true;
+                    dragTracksMessage.AllowDrop = true;
+                });
+            });
         }
 
         private void TrackList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -416,7 +452,6 @@ namespace GTAVUserMusicEditor
             {
                 TitleBox.Text = ((Track)trackList.SelectedItem).Title;
                 ArtistBox.Text = ((Track)trackList.SelectedItem).Artist;
-                PathText.Text = ((Track)trackList.SelectedItem).ShortPath;
                 EditButton.IsEnabled = true;
                 DeleteButton.IsEnabled = true;
             }
@@ -485,22 +520,22 @@ namespace GTAVUserMusicEditor
         {
             string title;
             string artist;
-            int duration;
+            TimeSpan duration;
             string shortPath = GetShortPath(file);
             bool fail = false;
             try
             {
                 var t = TagLib.File.Create(file);
-                title = t.Tag.Title;
-                artist = t.Tag.FirstPerformer;
-                duration = (int)(GetAudioDuration(file).TotalSeconds * 1000);
+                title = ReplaceProblemChars(t.Tag.Title);
+                artist = ReplaceProblemChars(t.Tag.FirstPerformer);
+                duration = GetAudioDuration(file);
                 t.Dispose();
             }
             catch (Exception)
             {
                 title = "<unknown title>";
                 artist = "<unknown artist>";
-                duration = 180000; //average song length?
+                duration = TimeSpan.FromSeconds(180); //average song length?
                 fail = true;
             }
 
@@ -524,6 +559,26 @@ namespace GTAVUserMusicEditor
 
             return fail;
         }
+
+        private string ReplaceProblemChars(string s)
+        {
+            if (s.IndexOf('\u2013') > -1) s = s.Replace('\u2013', '-');
+            if (s.IndexOf('\u2014') > -1) s = s.Replace('\u2014', '-');
+            if (s.IndexOf('\u2015') > -1) s = s.Replace('\u2015', '-');
+            if (s.IndexOf('\u2017') > -1) s = s.Replace('\u2017', '_');
+            if (s.IndexOf('\u2018') > -1) s = s.Replace('\u2018', '\'');
+            if (s.IndexOf('\u2019') > -1) s = s.Replace('\u2019', '\'');
+            if (s.IndexOf('\u201a') > -1) s = s.Replace('\u201a', ',');
+            if (s.IndexOf('\u201b') > -1) s = s.Replace('\u201b', '\'');
+            if (s.IndexOf('\u201c') > -1) s = s.Replace('\u201c', '\"');
+            if (s.IndexOf('\u201d') > -1) s = s.Replace('\u201d', '\"');
+            if (s.IndexOf('\u201e') > -1) s = s.Replace('\u201e', '\"');
+            if (s.IndexOf('\u2026') > -1) s = s.Replace("\u2026", "...");
+            if (s.IndexOf('\u2032') > -1) s = s.Replace('\u2032', '\'');
+            if (s.IndexOf('\u2033') > -1) s = s.Replace('\u2033', '\"');
+
+            return s;
+        }
     }
 
     public class Track
@@ -533,7 +588,7 @@ namespace GTAVUserMusicEditor
         private string artist;
         private string shortPath;
         private string path;
-        private int duration;
+        private TimeSpan duration;
 
         public int ID
         {
@@ -565,7 +620,7 @@ namespace GTAVUserMusicEditor
             set { path = value; }
         }
 
-        public int Duration
+        public TimeSpan Duration
         {
             get { return duration; }
             set { duration = value; }
