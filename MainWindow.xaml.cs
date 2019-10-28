@@ -348,85 +348,50 @@ namespace GTAVUserMusicEditor
 
                 bool showFailMessage = false;
                 bool showInvalidExtension = false;
+                bool showMissingMessage = false;
                 foreach (string f in files)
                 {
                     string fileName = f;
-                    if (fileName.LastIndexOf('.') >= 0)
+                    if (fileName.EndsWith(".lnk"))
                     {
-                        string ext;
                         try
                         {
-                            ext = fileName.Substring(fileName.LastIndexOf('.'), 4).ToLower();
+                            IWshRuntimeLibrary.WshShell wsh = new IWshRuntimeLibrary.WshShell();
+                            IWshRuntimeLibrary.IWshShortcut shortcut = (IWshRuntimeLibrary.IWshShortcut)wsh.CreateShortcut(fileName);
+                            fileName = shortcut.TargetPath;
                         }
-                        catch (Exception)
+                        catch(Exception)
                         {
-                            showInvalidExtension = true;
+                            showFailMessage = true;
                             continue;
                         }
-                        if (ext != ".mp3" && ext != ".m4a" && ext != ".aac" && ext != ".wma" && ext != ".lnk")
+                    }
+                    if(!File.Exists(fileName) && !Directory.Exists(fileName))
+                    {
+                        showMissingMessage = true;
+                        continue;
+                    }
+                    if(Directory.Exists(fileName)) //is Folder
+                    {
+                        string[][] sub = { Directory.GetFiles(fileName, "*.mp3"), Directory.GetFiles(fileName, "*.m4a"), Directory.GetFiles(fileName, "*.aac"), Directory.GetFiles(fileName, "*.wma") };
+                        foreach(string[] type in sub)
                         {
-                            showInvalidExtension = true;
-                            continue;
-                        }
-                        if(ext == ".lnk")
-                        {
-                            try
+                            foreach(string file in type)
                             {
-                                IWshRuntimeLibrary.WshShell wsh = new IWshRuntimeLibrary.WshShell();
-                                IWshRuntimeLibrary.IWshShortcut shortcut = (IWshRuntimeLibrary.IWshShortcut)wsh.CreateShortcut(fileName);
-                                fileName = shortcut.TargetPath;
-                            }
-                            catch(Exception)
-                            {
-                                showFailMessage = true;
-                                return;
+                                showFailMessage = AddFileToTracks(file);
                             }
                         }
+                    }
+                    else if(IsValidAudioExt(fileName))
+                    {
+                        showFailMessage = AddFileToTracks(fileName);
                     }
                     else
                     {
                         showInvalidExtension = true;
                         continue;
                     }
-                    string title;
-                    string artist;
-                    int duration;
-                    string shortPath = GetShortPath(fileName);
-                    try
-                    {
-                        var t = TagLib.File.Create(fileName);
-                        title = t.Tag.Title;
-                        artist = t.Tag.FirstPerformer;
-                        duration = (int)(GetAudioDuration(fileName).TotalSeconds * 1000);
-                        t.Dispose();
-                    }
-                    catch (Exception)
-                    {
-                        title = "<unknown title>";
-                        artist = "<unknown artist>";
-                        duration = 180000; //average song length?
-                        showFailMessage = true;
-                    }
-
-                    if (title.Length > 31)
-                    {
-                        title = title.Substring(0, 31);
-                    }
-                    if (artist.Length > 31)
-                    {
-                        artist = artist.Substring(0, 31);
-                    }
-
-                    if (tracks.Count > 0)
-                    {
-                        tracks.Add(new Track() { ID = tracks.Max(x => x.ID) + 1, Title = title, Artist = artist, ShortPath = shortPath, Path = fileName, Duration = duration });
-                    }
-                    else
-                    {
-                        tracks.Add(new Track() { ID = 0, Title = title, Artist = artist, ShortPath = shortPath, Path = fileName, Duration = duration });
-                    }
                 }
-
                 if (showFailMessage)
                 {
                     MessageBox.Show("Failed to parse tags in one or more files");
@@ -434,6 +399,10 @@ namespace GTAVUserMusicEditor
                 if (showInvalidExtension)
                 {
                     MessageBox.Show("One or more files were skipped due to an invalid extension.");
+                }
+                if(showMissingMessage)
+                {
+                    MessageBox.Show("One or more files were missing, so they were skipped.");
                 }
 
                 ((ListCollectionView)trackList.ItemsSource).Refresh();
@@ -500,6 +469,60 @@ namespace GTAVUserMusicEditor
                 var t = (ulong)prop.ValueAsObject;
                 return TimeSpan.FromTicks((long)t);
             }
+        }
+
+        private bool IsValidAudioExt(string file)
+        {
+            file = file.ToLower();
+            if(file.EndsWith(".mp3") || file.EndsWith(".m4a") || file.EndsWith(".aac") || file.EndsWith(".wma"))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private bool AddFileToTracks(string file)
+        {
+            string title;
+            string artist;
+            int duration;
+            string shortPath = GetShortPath(file);
+            bool fail = false;
+            try
+            {
+                var t = TagLib.File.Create(file);
+                title = t.Tag.Title;
+                artist = t.Tag.FirstPerformer;
+                duration = (int)(GetAudioDuration(file).TotalSeconds * 1000);
+                t.Dispose();
+            }
+            catch (Exception)
+            {
+                title = "<unknown title>";
+                artist = "<unknown artist>";
+                duration = 180000; //average song length?
+                fail = true;
+            }
+
+            if (title.Length > 31)
+            {
+                title = title.Substring(0, 31);
+            }
+            if (artist.Length > 31)
+            {
+                artist = artist.Substring(0, 31);
+            }
+
+            if (tracks.Count > 0)
+            {
+                tracks.Add(new Track() { ID = tracks.Max(x => x.ID) + 1, Title = title, Artist = artist, ShortPath = shortPath, Path = file, Duration = duration });
+            }
+            else
+            {
+                tracks.Add(new Track() { ID = 0, Title = title, Artist = artist, ShortPath = shortPath, Path = file, Duration = duration });
+            }
+
+            return fail;
         }
     }
 
